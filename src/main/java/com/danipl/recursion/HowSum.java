@@ -21,18 +21,17 @@ public class HowSum {
 
         for (final int candidate : values) {
             final int result = targetSum - candidate;
-            if (result >= 0) {
-                final int[] newArray = new int[sumValues.length + 1];
-                if (sumValues.length > 0) {
-                    arraycopy(sumValues, 0, newArray, 0, sumValues.length);
-                }
-                newArray[newArray.length - 1] = candidate;
 
-                final int[] resultValues = normal(result, values, newArray);
+            final int[] newArray = new int[sumValues.length + 1];
+            if (sumValues.length > 0) {
+                arraycopy(sumValues, 0, newArray, 0, sumValues.length);
+            }
+            newArray[newArray.length - 1] = candidate;
 
-                if (resultValues.length > 0) {
-                    return resultValues;
-                }
+            final int[] resultValues = normal(result, values, newArray);
+
+            if (resultValues.length > 0) {
+                return resultValues;
             }
         }
 
@@ -53,20 +52,19 @@ public class HowSum {
 
         for (final int candidate : values) {
             final int result = targetSum - candidate;
-            if (result >= 0) {
-                final int[] newArray = new int[sumValues.length + 1];
-                if (sumValues.length > 0) {
-                    arraycopy(sumValues, 0, newArray, 0, sumValues.length);
-                }
-                newArray[newArray.length - 1] = candidate;
 
-                final int[] resultValues = memo(result, values, newArray, memo);
+            final int[] newArray = new int[sumValues.length + 1];
+            if (sumValues.length > 0) {
+                arraycopy(sumValues, 0, newArray, 0, sumValues.length);
+            }
+            newArray[newArray.length - 1] = candidate;
 
-                memo.put(targetSum, Arrays.stream(resultValues).boxed().toArray(value -> new Integer[resultValues.length]));
+            final int[] resultValues = memo(result, values, newArray, memo);
 
-                if (resultValues.length > 0) {
-                    return resultValues;
-                }
+            memo.put(targetSum, Arrays.stream(resultValues).boxed().toArray(value -> new Integer[resultValues.length]));
+
+            if (resultValues.length > 0) {
+                return resultValues;
             }
         }
 
