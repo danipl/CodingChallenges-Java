@@ -1,8 +1,12 @@
 package com.danipl.recursion;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Calculate the fibonacci sequence.
+ */
 public class Fibonacci {
     public static long normal(int num) {
         if (num <= 0) return 0;
@@ -11,7 +15,7 @@ public class Fibonacci {
     }
 
     public static long memo(int num) {
-        return memo(num, new ConcurrentHashMap<>());
+        return memo(num, new HashMap<>());
     }
 
     public static long memo(int num, Map<Integer, Long> memo) {

@@ -3,9 +3,13 @@ package com.danipl.util;
 public class TimeUtils {
 
     public static void timed(final Runnable runnable) {
+        timed(runnable, ">");
+    }
+
+    public static void timed(final Runnable runnable, final String reason) {
         final long initial = System.currentTimeMillis();
         runnable.run();
-        System.out.println((System.currentTimeMillis() - initial) + " ms.");
+        System.out.println(reason + " " + (System.currentTimeMillis() - initial) + " ms.");
     }
 
 }
