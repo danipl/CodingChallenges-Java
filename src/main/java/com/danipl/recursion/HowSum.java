@@ -1,6 +1,5 @@
 package com.danipl.recursion;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -42,12 +41,12 @@ public class HowSum {
         return memo(targetSum, values, new int[0], new HashMap<>());
     }
 
-    public static int[] memo(int targetSum, int[] values, int[] sumValues, Map<Integer, Integer[]> memo) {
+    public static int[] memo(int targetSum, int[] values, int[] sumValues, Map<Integer, IntArray> memo) {
         if (targetSum == 0) return sumValues;
         if (targetSum < 0) return new int[0];
 
         if (memo.containsKey(targetSum)) {
-            return Arrays.stream(memo.get(targetSum)).mapToInt(value -> value).toArray();
+            return memo.get(targetSum).array;
         }
 
         for (final int candidate : values) {
@@ -61,7 +60,7 @@ public class HowSum {
 
             final int[] resultValues = memo(result, values, newArray, memo);
 
-            memo.put(targetSum, Arrays.stream(resultValues).boxed().toArray(value -> new Integer[resultValues.length]));
+            memo.put(targetSum, new IntArray(resultValues));
 
             if (resultValues.length > 0) {
                 return resultValues;
@@ -69,6 +68,16 @@ public class HowSum {
         }
 
         return new int[0];
+    }
+
+    public static class IntArray {
+
+        private final int[] array;
+
+        public IntArray(int[] array) {
+            this.array = array;
+        }
+
     }
 
 }
