@@ -2,7 +2,6 @@ package com.danipl.recursion;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Calculate the fibonacci sequence.

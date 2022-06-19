@@ -3,6 +3,9 @@ package com.danipl.recursion;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Determine how many paths there are until the goal.
+ */
 public class GridTraveler {
     public static long normal(int x, int y) {
         if (x == 1 && y == 1) return 1;
