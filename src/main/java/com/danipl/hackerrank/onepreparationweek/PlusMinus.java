@@ -16,13 +16,13 @@ public class PlusMinus {
      *
      * The function accepts INTEGER_ARRAY arr as parameter.
      */
-    public static void plusMinus(List<Integer> arr) {
+    public static void plusMinus(final List<Integer> arr) {
         for (final BigDecimal value : calculation(arr)) {
             out.println(value);
         }
     }
 
-    public static BigDecimal[] calculation(List<Integer> arr) {
+    public static BigDecimal[] calculation(final List<Integer> arr) {
         final BigDecimal total = new BigDecimal(arr.size());
         final BigDecimal one = new BigDecimal(1);
 
