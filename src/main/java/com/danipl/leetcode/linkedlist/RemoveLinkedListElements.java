@@ -6,20 +6,21 @@ package com.danipl.leetcode.linkedlist;
 public class RemoveLinkedListElements {
 
     public ListNode removeElements(ListNode head, int val) {
-        if (head == null) return head;
-        ListNode curr = head;
-        ListNode prev = null;
-        head = null;
-        while (curr != null) {
-            if (curr.val == val && prev != null) {
+        if(head == null) return head;
+        ListNode sentinel = new ListNode(0);
+        sentinel.next = head;
+        ListNode prev = sentinel, curr = head;
+        while(curr != null){
+            if(curr.val == val){
                 prev.next = curr.next;
-            } else if (head == null) {
-                head = prev;
+            } else {
+                prev = curr;
             }
-            if (curr.val != val) prev = curr;
             curr = curr.next;
         }
-        return (head == null) ? prev : head;
+        head = sentinel.next;
+        sentinel.next = null;
+        return head;
     }
 
     class ListNode {
