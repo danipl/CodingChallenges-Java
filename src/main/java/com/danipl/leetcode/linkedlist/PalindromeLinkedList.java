@@ -14,7 +14,7 @@ public class PalindromeLinkedList {
         // 1>2>[3]>2>[1]
         ListNode finalNode = reverseFromNode(slow);
         ListNode current = head;
-        // [1]>2>3<2<[1]
+        // [1]>2>3>[1]>2>3
         while (finalNode != null && current != null) {
             if (current.val != finalNode.val) {
                 return false;
@@ -29,10 +29,10 @@ public class PalindromeLinkedList {
         ListNode previous = null;
         ListNode curr = root;
         while (curr != null) {
-            final ListNode next = curr.next;
+            final ListNode temp = curr.next;
             curr.next = previous;
             previous = curr;
-            curr = next;
+            curr = temp;
         }
         return previous;
     }
