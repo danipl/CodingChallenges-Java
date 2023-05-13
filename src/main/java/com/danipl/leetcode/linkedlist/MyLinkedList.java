@@ -1,4 +1,4 @@
-package com.danipl.leetcode.doublelinkedlist;
+package com.danipl.leetcode.linkedlist;
 
 public class MyLinkedList {
 

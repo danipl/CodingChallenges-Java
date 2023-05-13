@@ -1,5 +1,6 @@
 package com.danipl.leetcode.doublelinkedlist;
 
+import com.danipl.leetcode.linkedlist.MyLinkedList;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
