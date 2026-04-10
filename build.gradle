@@ -10,20 +10,21 @@ repositories {
 }
 
 java {
-    sourceCompatibility = "15"
-    targetCompatibility = "15"
+    sourceCompatibility = "17"
+    targetCompatibility = "17"
 }
 
 dependencies {
-    implementation 'org.junit.jupiter:junit-jupiter-api:5.+'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.+'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.2'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
 }
 
 sourceSets {
-    main.java.srcDirs += 'src'
-    main.resources.srcDirs += 'src'
-    test.java.srcDirs += 'test'
-    test.resources.srcDirs += 'test'
+    main.java.srcDirs += 'src/main/java'
+    main.resources.srcDirs += 'src/main/resources'
+    test.java.srcDirs += 'src/test/java'
+    test.resources.srcDirs += 'src/test/resources'
 }
 
 test {
