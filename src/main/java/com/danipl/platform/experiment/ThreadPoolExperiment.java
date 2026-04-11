@@ -1,17 +1,16 @@
 package com.danipl.platform.experiment;
 
-import java.util.Collection;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.IntStream;
-
-import static java.util.stream.Collectors.toList;
 
 public class ThreadPoolExperiment {
 
@@ -22,7 +21,6 @@ public class ThreadPoolExperiment {
     private static final long TASK_MIN_DURATION_MS = 500;
     private static final long TASK_MAX_DURATION_MS = 1500;
     private static final long FUTURE_TIMEOUT_MS = 3000;
-    private static final long POOL_SHUTDOWN_TIMEOUT_S = 60;
 
     public static void main(final String[] args) {
         validateArgs(args);
@@ -30,20 +28,21 @@ public class ThreadPoolExperiment {
         final String handlerName = parseHandler(args.length > 0 ? args[0] : null);
         System.out.println("[POOL-MONITOR] Using rejection handler: " + handlerName);
 
+        final BlockingQueue<Future<?>> taskFutures = new ArrayBlockingQueue<>(TASK_COUNT);
         final RejectedExecutionHandler handler = createHandler(handlerName);
         final ThreadPoolExecutor fixedPool = createThreadPool(handler);
-
-        final TaskResultCollector collector = new TaskResultCollector();
-        final Collection<Future<?>> tasks = submitTasks(fixedPool, TASK_COUNT, collector);
-
-        fixedPool.shutdown();
-
         final ExecutorService monitorPool = Executors.newVirtualThreadPerTaskExecutor();
-        try {
-            monitorResults(tasks, (int) FUTURE_TIMEOUT_MS, collector, monitorPool);
-        } finally {
-            shutdownGracefully(fixedPool, monitorPool);
-        }
+        final TaskResultCollector collector = new TaskResultCollector();
+
+        monitorResults(taskFutures, collector, monitorPool);
+        submitTasks(fixedPool, taskFutures);
+
+        shutdownGracefully(fixedPool, "fixedPool");
+        shutdownGracefully(monitorPool, "monitorPool");
+
+        System.out.println("\nCompleted tasks: " + collector.getCompletedCount());
+        System.out.println("Cancelled tasks: " + collector.getCancelledCount());
+        System.out.println("Failed tasks: " + collector.getFailedCount());
     }
 
     private static void validateArgs(final String[] args) {
@@ -95,88 +94,77 @@ public class ThreadPoolExperiment {
         return executor;
     }
 
-    private static Collection<Future<?>> submitTasks(final ThreadPoolExecutor executor, final int taskCount, final TaskResultCollector collector) {
-        return IntStream.range(0, taskCount).mapToObj(i -> executor.submit(() -> {
-            System.out.println("[TASK-EXEC] Task " + i + " started by " + Thread.currentThread().getName());
-            if ((int) (Math.random() * 10) == 1) {
-                collector.recordFailed(new RuntimeException("Simulated failure for task " + i));
-                throw new RuntimeException("Simulated failure for task " + i);
-            }
+    private static void submitTasks(
+            final ThreadPoolExecutor executor, final BlockingQueue<Future<?>> taskFutures
+    ) {
+        IntStream.range(0, TASK_COUNT).forEach(i -> {
+            final Future<?> taskFuture = executor.submit(() -> {
+                System.out.println("[TASK-EXEC] Task " + i + " started by " + Thread.currentThread().getName());
+                if ((int) (Math.random() * 10) == 1) {
+                    throw new RuntimeException("Simulated failure for task " + i);
+                }
+                try {
+                    Thread.sleep(TASK_MIN_DURATION_MS + (long) (Math.random() * (TASK_MAX_DURATION_MS - TASK_MIN_DURATION_MS)));
+                } catch (final InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            });
             try {
-                Thread.sleep(TASK_MIN_DURATION_MS + (long) (Math.random() * (TASK_MAX_DURATION_MS - TASK_MIN_DURATION_MS)));
-                collector.recordCompleted();
+                taskFutures.put(taskFuture);
             } catch (final InterruptedException e) {
-                collector.recordFailed(e);
-                Thread.currentThread().interrupt();
+                throw new RuntimeException(e);
             }
-        })).collect(toList());
+        });
     }
 
     private static void monitorResults(
-            final Collection<Future<?>> tasks, final int timeoutMs,
-            final TaskResultCollector collector, final ExecutorService monitorPool
+            final BlockingQueue<Future<?>> taskFutures, final TaskResultCollector collector,
+            final ExecutorService monitorPool
     ) {
-        System.out.println("[POOL-MONITOR] Monitoring " + tasks.size() + " tasks with timeout " + timeoutMs + "ms");
-
-        try {
-            final Collection<Future<?>> checkers = tasks.stream().map(future -> monitorPool.submit(() -> {
-                if (future.isCancelled()) {
-                    collector.recordCancelled();
-                } else {
-                    try {
-                        future.get();
-                    } catch (final Exception e) {
-                        collector.recordFailed(e);
-                    }
-                }
-            })).collect(toList());
-
-            for (final Future<?> checker : checkers) {
+        System.out.println("[POOL-MONITOR] Monitoring " + TASK_COUNT + " tasks");
+        final AtomicInteger checkerCount = new AtomicInteger(TASK_COUNT);
+        monitorPool.submit(() -> {
+            while (checkerCount.get() > 0) {
                 try {
-                    checker.get(timeoutMs, TimeUnit.MILLISECONDS);
-                } catch (final Exception e) {
-                    System.out.println("[POOL-MONITOR] Task check timed out or failed: " + e.getMessage());
+                    final Future<?> futureTask = taskFutures.take();
+                    System.out.println("[POOL-MONITOR] Checking task completion");
+                    if (futureTask.isCancelled()) {
+                        collector.recordCancelled();
+                    } else {
+                        try {
+                            futureTask.get();
+                            collector.recordCompleted();
+                        } catch (final Exception e) {
+                            collector.recordFailed(e);
+                        }
+                    }
+                } catch (final InterruptedException e) {
+                    throw new RuntimeException(e);
+                } finally {
+                    checkerCount.decrementAndGet();
                 }
             }
-
-            if (monitorPool.awaitTermination(1, TimeUnit.MINUTES)) {
-                System.out.println("[POOL-MONITOR] All tasks completed successfully");
-            }
-        } catch (final InterruptedException e) {
-            throw new RuntimeException(e);
-        } finally {
-            if (!monitorPool.isShutdown()) {
-                monitorPool.shutdown();
-            }
-        }
-
-        System.out.println("\nCompleted tasks: " + collector.getCompletedCount());
-        System.out.println("Cancelled tasks: " + collector.getCancelledCount());
-        System.out.println("Failed tasks: " + collector.getFailedCount());
+        });
     }
 
-    private static void shutdownGracefully(final ExecutorService... executors) {
-        System.out.println("[SHUTDOWN] Initiating graceful shutdown for " + executors.length + " executor(s)");
-        for (final ExecutorService executor : executors) {
-            if (executor == null || executor.isShutdown()) {
-                continue;
-            }
-            try {
-                if (!executor.awaitTermination(POOL_SHUTDOWN_TIMEOUT_S, TimeUnit.SECONDS)) {
-                    System.out.println("[SHUTDOWN] Executor did not terminate, forcing shutdown");
-                    executor.shutdownNow();
-                }
-            } catch (final InterruptedException e) {
-                System.out.println("[SHUTDOWN] Shutdown interrupted, forcing shutdownNow");
+    private static void shutdownGracefully(final ExecutorService executor, final String executorName) {
+        System.out.println("[SHUTDOWN] Initiating graceful shutdown for " + executorName + " executor");
+        executor.shutdown();
+        try {
+            if (!executor.awaitTermination(1, TimeUnit.MINUTES)) {
+                System.out.println("[SHUTDOWN] Executor " + executorName + " did not terminate, forcing shutdown");
                 executor.shutdownNow();
-                Thread.currentThread().interrupt();
-            } finally {
-                if (!executor.isTerminated()) {
-                    executor.close();
-                }
+            }
+        } catch (final InterruptedException e) {
+            System.out.println("[SHUTDOWN] Shutdown " + executorName + " interrupted, forcing shutdownNow");
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+        } finally {
+            if (!executor.isTerminated()) {
+                executor.close();
             }
         }
-        System.out.println("[SHUTDOWN] All executors shut down");
+        System.out.println("[SHUTDOWN] " + executorName + " shut down");
     }
 
     static class TaskResultCollector {
