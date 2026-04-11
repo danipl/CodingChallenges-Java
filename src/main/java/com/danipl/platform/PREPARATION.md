@@ -113,9 +113,53 @@ ExecutorService customPool = Executors.newFixedThreadPool(4, namedFactory);
       new ThreadPoolExecutor.CallerRunsPolicy() // Backpressure via caller
   );
   ```
-- Rejected policies: `AbortPolicy` (default, throws), `CallerRunsPolicy` (backpressure), `DiscardPolicy`, `DiscardOldestPolicy`.
 
-**Interview trap:** `newFixedThreadPool` uses unbounded queue — this is dangerous under load. Production code should use `ThreadPoolExecutor` directly with bounded queues.
+**Rejection Policies** (`RejectedExecutionHandler`):
+
+When the queue is full and all threads are busy, the executor must decide how to handle new tasks. Java provides four
+built-in policies:
+
+1. **AbortPolicy** (default)
+  - **Behavior:** Throws `RejectedExecutionException` when a task cannot be accepted.
+  - **Use case:** When you want to fail fast and make the caller aware that the system is overloaded. Forces the caller
+    to handle rejection explicitly.
+  - **Production reality:** Good for critical systems where you prefer explicit failure over silent data loss.
+   ```java
+   new ThreadPoolExecutor.AbortPolicy()
+   ```
+
+2. **CallerRunsPolicy**
+  - **Behavior:** Executes the rejected task **in the caller's thread** (the thread that called `execute()`).
+  - **Use case:** Natural backpressure mechanism — if the pool is overwhelmed, the producer slows down because it's now
+    doing the work itself.
+  - **Production reality:** Excellent for rate-limiting producers. The caller cannot submit new tasks while it's
+    executing the current one.
+  - **Warning:** The caller thread is blocked during execution. Not suitable if the caller thread must remain
+    responsive (e.g., HTTP request handler thread).
+   ```java
+   new ThreadPoolExecutor.CallerRunsPolicy()
+   ```
+
+3. **DiscardPolicy**
+  - **Behavior:** Silently discards the rejected task. No exception, no execution.
+  - **Use case:** Non-critical background work where some loss is acceptable (metrics, best-effort logging).
+  - **Production reality:** Dangerous — you lose data without knowing. Use only when task loss is truly acceptable.
+   ```java
+   new ThreadPoolExecutor.DiscardPolicy()
+   ```
+
+4. **DiscardOldestPolicy**
+  - **Behavior:** Discards the **oldest** unprocessed task in the queue (head of the queue), then retries adding the new
+    task.
+  - **Use case:** When newer data is more valuable than older data (real-time feeds, latest metrics).
+  - **Production reality:** Risk of starvation — if the system is continuously overloaded, old tasks never execute. Can
+    violate ordering guarantees.
+   ```java
+   new ThreadPoolExecutor.DiscardOldestPolicy()
+   ```
+
+**Custom Rejection Handler:**
+You can implement your own policy by implementing `RejectedExecutionHandler`:
 
 #### newCachedThreadPool()
 
