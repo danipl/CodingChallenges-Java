@@ -401,9 +401,7 @@ CompletableFuture<String> userFuture = CompletableFuture.supplyAsync(this::fetch
 CompletableFuture<String> configFuture = CompletableFuture.supplyAsync(this::fetchConfig);
 
 CompletableFuture<Void> both = CompletableFuture.allOf(userFuture, configFuture);
-both.
-
-thenRun(() ->{
+both.thenRun(() ->{
 // Both completed
 String user = userFuture.join();
 String config = configFuture.join();
@@ -523,38 +521,24 @@ public boolean transition(int expected, int newState) {
 
 // AtomicLong - for metrics, timestamps
 AtomicLong lastFailureTime = new AtomicLong(0);
-lastFailureTime.
-
-updateAndGet(current ->
-current >System.
-
-currentTimeMillis() ?current :System.
-
-currentTimeMillis()
-);
+lastFailureTime.updateAndGet(current -> current >System.currentTimeMillis() ?current :System.currentTimeMillis());
 
 // AtomicReference - for object updates
 AtomicReference<Connection> connectionRef = new AtomicReference<>();
 Connection old = connectionRef.getAndSet(newConnection);
 if(old !=null){
-        old.
-
-close(); // Cleanup old connection
+    old.close(); // Cleanup old connection
 }
 
 // LongAdder - high-contention counters (better than AtomicLong)
 LongAdder requestCount = new LongAdder();
-requestCount.
-
-increment();
+requestCount.increment();
 
 long total = requestCount.sum();
 
 // LongAccumulator - custom accumulation logic
 LongAccumulator maxLatency = new LongAccumulator(Long::max, 0);
-maxLatency.
-
-accumulate(latency);
+maxLatency.accumulate(latency);
 ```
 
 **Atomic vs Lock trade-offs:**
@@ -609,27 +593,15 @@ Map<String, String> syncMap = Collections.synchronizedMap(new HashMap<>());
 ConcurrentHashMap<String, String> concurrentMap = new ConcurrentHashMap<>();
 
 // ConcurrentHashMap specific operations
-concurrentMap.
-
-putIfAbsent("key","value");
-concurrentMap.
-
-computeIfAbsent("key",k ->
-
-expensiveCompute(k));
-        concurrentMap.
-
-merge("key","value",String::concat);
+concurrentMap.putIfAbsent("key","value");
+concurrentMap.computeIfAbsent("key",k -> expensiveCompute(k));
+concurrentMap.merge("key","value", String::concat);
 
 // Atomic compound operations
-concurrentMap.
-
-compute("counter",(k, v) ->{
-        if(v ==null)return"1";
-        return String.
-
-valueOf(Integer.parseInt(v) +1);
-        });
+concurrentMap.compute("counter",(k, v) -> {
+        if(v ==null) return"1";
+        return String.valueOf(Integer.parseInt(v) +1);
+});
 ```
 
 **Performance comparison:**
@@ -639,26 +611,71 @@ valueOf(Integer.parseInt(v) +1);
 
 ### BlockingQueue: Producer-Consumer Pattern
 
+In `java.util.concurrent`, the choice between a bounded and unbounded queue determines how your system handles **backpressure** — what happens when producers outpace consumers.
+
+#### Bounded vs Unbounded Queues
+
+**Bounded Queue** — fixed maximum capacity. Once full, `put()` blocks, `offer()` returns false/throws.
+
+* **Goal:** Resource management and stability.
+* **Backpressure:** Forces the producer to slow down if the consumer can't keep up.
+* **Risk:** Thread starvation or deadlocks if capacity is too small and consumers stall.
+
 ```java
-// ArrayBlockingQueue - bounded, pre-allocated, FIFO
-BlockingQueue<Task> queue = new ArrayBlockingQueue<>(1000);
+// ArrayBlockingQueue — bounded, pre-allocated array, FIFO
+BlockingQueue<String> bounded = new ArrayBlockingQueue<>(100);
+```
 
-// LinkedBlockingQueue - optionally bounded, linked nodes
-BlockingQueue<Task> linkedQueue = new LinkedBlockingQueue<>(); // Unbounded - careful!
-BlockingQueue<Task> boundedLinked = new LinkedBlockingQueue<>(1000);
+**Unbounded Queue** — grows until memory exhaustion. No fixed capacity limit.
 
+* **Goal:** Maximum throughput for the producer (producer never waits).
+* **Backpressure:** None. The producer can dump tasks regardless of consumer speed.
+* **Risk:** The dreaded `OutOfMemoryError`. If the consumer crashes or slows, the queue consumes all heap.
+
+```java
+// LinkedBlockingQueue — unbounded by default (Integer.MAX_VALUE)
+BlockingQueue<String> unbounded = new LinkedBlockingQueue<>(); // DANGER in production
+```
+
+#### Comparison
+
+| Feature | Bounded Queue | Unbounded Queue |
+| :--- | :--- | :--- |
+| **Capacity** | Fixed (e.g., 100) | Technically infinite (`Integer.MAX_VALUE`) |
+| **Memory Safety** | High (prevents OOME) | Low (can cause OOME under load) |
+| **Throughput** | Limited by capacity | High (producers never wait) |
+| **Use Case** | Production stability, bounded RAM | Brief spikes, low-latency, controlled workloads |
+
+> **Production rule: bounded queues are almost always preferred.** An unbounded queue is like an infinite to-do list — it looks great because you never say "no" to a task, but eventually your desk (RAM) is buried. Bounded queues build a fail-fast system that protects your application's memory.
+
+> **Note on `LinkedBlockingQueue`:** It is a hybrid. Make it bounded by providing a capacity: `new LinkedBlockingQueue<>(100)`. Often preferred over `ArrayBlockingQueue` in high-contention scenarios because it uses a "two-lock queue" algorithm with separate locks for head and tail, offering better concurrency.
+
+#### BlockingQueue Implementations
+
+| Implementation | Bounded? | Internal Structure | Locking | Best For |
+|---|---|---|---|---|
+| `ArrayBlockingQueue` | Yes | Circular array | Single `ReentrantLock` for both put/take | Bounded, predictable memory |
+| `LinkedBlockingQueue` | Optionally | Linked nodes | Two locks (head/take, tail/put) | High-throughput producer-consumer |
+| `PriorityBlockingQueue` | No | Binary heap | Single lock + condition | Priority-ordered processing |
+| `DelayQueue` | No | PriorityQueue + Delayed | Single lock + condition | Time-ordered execution (challenge10) |
+| `SynchronousQueue` | Yes (size 0) | No real storage | Handoff directly | `newCachedThreadPool` — zero buffering |
+| `LinkedTransferQueue` | No | Linked nodes + CAS | Lock-free for uncontended | Ultra-low latency, handoff |
+
+#### Producer-Consumer Code
+
+```java
 // Producer
-queue.
-
-put(task);              // Blocks if full
-
+queue.put(task);              // Blocks if full
 boolean offered = queue.offer(task, 5, TimeUnit.SECONDS); // Timeout
 
 // Consumer
 Task task = queue.take();     // Blocks if empty
 Task polled = queue.poll(5, TimeUnit.SECONDS); // Timeout
+```
 
-// Resource pool implementation using BlockingQueue
+#### Resource Pool Implementation (challenge08)
+
+```java
 public class ResourcePool<T extends AutoCloseable> {
     private final BlockingQueue<T> available;
     private final int maxSize;
@@ -691,9 +708,7 @@ public class ResourcePool<T extends AutoCloseable> {
 // CountDownLatch - one-shot barrier
 CountDownLatch latch = new CountDownLatch(3);
 // Each worker calls: latch.countDown();
-latch.
-
-await(); // Main thread waits for all 3
+latch.await(); // Main thread waits for all 3
 
 // CyclicBarrier - reusable barrier
 CyclicBarrier barrier = new CyclicBarrier(4);
@@ -702,12 +717,8 @@ CyclicBarrier barrier = new CyclicBarrier(4);
 
 // Semaphore - limit concurrent access
 Semaphore semaphore = new Semaphore(10); // Max 10 concurrent
-semaphore.
-
-acquire();   // Decrement, block if 0
-semaphore.
-
-release();   // Increment
+semaphore.acquire();   // Decrement, block if 0
+semaphore.release();   // Increment
 
 // Rate limiter using Semaphore
 public class SemaphoreRateLimiter {
@@ -799,17 +810,11 @@ public class ScheduledTask implements Delayed {
 
 // Usage
 DelayQueue<ScheduledTask> queue = new DelayQueue<>();
-queue.
-
-put(new ScheduledTask(() ->System.out.
-
-println("Hello"), 5000));
+queue.put(new ScheduledTask(() ->System.out.println("Hello"), 5000));
 
 // Consumer thread
 ScheduledTask task = queue.take(); // Blocks until delay expired
-task.
-
-execute();
+task.execute();
 ```
 
 ### PriorityQueue: Min-Heap for Scheduling
@@ -831,15 +836,9 @@ public class PriorityTask implements Comparable<PriorityTask> {
 }
 
 PriorityQueue<PriorityTask> pq = new PriorityQueue<>();
-pq.
-
-offer(new PriorityTask(1, task1));
-        pq.
-
-offer(new PriorityTask(3, task2));
-        pq.
-
-offer(new PriorityTask(1, task3));
+pq.offer(new PriorityTask(1, task1));
+pq.offer(new PriorityTask(3, task2));
+pq.offer(new PriorityTask(1, task3));
 
 PriorityTask next = pq.poll(); // task1 (priority 1, older)
 ```
@@ -851,25 +850,12 @@ PriorityTask next = pq.poll(); // task1 (priority 1, older)
 ConcurrentHashMap<String, AtomicInteger> counters = new ConcurrentHashMap<>();
 
 // Option 1: Using atomic operations on value
-counters.
-
-computeIfAbsent("key",k ->new
-
-AtomicInteger(0))
-        .
-
-incrementAndGet();
+counters.computeIfAbsent("key", k -> new AtomicInteger(0)).incrementAndGet();
 
 // Option 2: Using ConcurrentHashMap's compute
-counters.
-
-compute("key",(k, v) ->{
-        if(v ==null)return new
-
-AtomicInteger(1);
-    v.
-
-incrementAndGet();
+counters.compute("key", (k, v) -> {
+    if(v == null) return new AtomicInteger(1);
+    v.incrementAndGet();
     return v;
 });
 
@@ -904,9 +890,7 @@ public class ConfigNotifier {
 ConcurrentLinkedQueue<Event> eventQueue = new ConcurrentLinkedQueue<>();
 
 // Lock-free operations
-eventQueue.
-
-offer(event);
+eventQueue.offer(event);
 
 Event polled = eventQueue.poll(); // null if empty
 
@@ -1285,25 +1269,13 @@ public void doWork() throws Exception {
 ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
 
 // One-shot delay
-scheduler.
-
-schedule(() ->System.out.
-
-println("Delayed"), 5,TimeUnit.SECONDS);
+scheduler.schedule(() -> System.out.println("Delayed"), 5, TimeUnit.SECONDS);
 
 // Fixed rate - executes at consistent intervals (may overlap)
-        scheduler.
-
-scheduleAtFixedRate(() ->
-
-heartbeat(), 0,30,TimeUnit.SECONDS);
+scheduler.scheduleAtFixedRate(() -> heartbeat(), 0, 30, TimeUnit.SECONDS);
 
 // Fixed delay - waits specified time between completions
-        scheduler.
-
-scheduleWithFixedDelay(() ->
-
-cleanup(), 0,60,TimeUnit.SECONDS);
+scheduler.scheduleWithFixedDelay(() -> cleanup(), 0, 60, TimeUnit.SECONDS);
 
 // Graceful shutdown
 public void shutdownGracefully() {
@@ -1675,6 +1647,8 @@ public class GracefulService {
         }
     }
 }
+```
+
 ---
 
 ## H. Java 17+ Features for Platform Engineering
@@ -1707,7 +1681,7 @@ public record LogEntry(
         long timestamp,
         long responseTimeMs,
         String endpoint
-) {}
+) 
 ```
 
 ### Switch Expressions
@@ -1861,9 +1835,7 @@ public enum SingletonEnum {
 BlockingQueue<Task> queue = new ArrayBlockingQueue<>(100);
 
 // Producer
-queue.
-
-put(task); // Blocks if full
+queue.put(task); // Blocks if full
 
 // Consumer
 Task task = queue.take(); // Blocks if empty
@@ -1884,19 +1856,12 @@ public void shutdown() {
 ### CompletableFuture Pipeline
 
 ```java
-CompletableFuture.supplyAsync(this::fetch)
-    .
-
-thenApply(this::transform)
-    .
-
-thenCompose(this::asyncEnrich)
-    .
-
-orTimeout(5,TimeUnit.SECONDS)
-    .
-
-exceptionally(this::handleError);
+CompletableFuture
+        .supplyAsync(this::fetch)
+        .thenApply(this::transform)
+        .thenCompose(this::asyncEnrich)
+        .orTimeout(5, TimeUnit.SECONDS)
+        .exceptionally(this::handleError);
 ```
 
 ---
