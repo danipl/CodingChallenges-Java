@@ -62,7 +62,7 @@ public class ThreadPoolExperiment {
 
     private static String parseHandler(final String handlerName) {
         if (handlerName == null || handlerName.isBlank()) {
-            return "caller";
+            return "discard";
         }
         return switch (handlerName.toLowerCase()) {
             case "abort", "discard", "discardoldest", "caller" -> handlerName;
@@ -151,7 +151,7 @@ public class ThreadPoolExperiment {
         System.out.println("[SHUTDOWN] Initiating graceful shutdown for " + executorName + " executor");
         executor.shutdown();
         try {
-            if (!executor.awaitTermination(1, TimeUnit.MINUTES)) {
+            if (!executor.awaitTermination(20, TimeUnit.SECONDS)) {
                 System.out.println("[SHUTDOWN] Executor " + executorName + " did not terminate, forcing shutdown");
                 executor.shutdownNow();
             }
