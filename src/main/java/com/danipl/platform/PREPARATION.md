@@ -60,7 +60,8 @@ String result = future.get(); // Blocks until result available
 
 ### ExecutorService Framework
 
-Each thread pool type has distinct characteristics, use cases, and limitations. Understanding these deeply is often the difference between a senior and mid-level answer.
+Each thread pool type has distinct characteristics, use cases, and limitations. Understanding these deeply is often the
+difference between a senior and mid-level answer.
 
 ```java
 // Fixed thread pool - bounded concurrency, predictable resource usage
@@ -93,17 +94,21 @@ ExecutorService customPool = Executors.newFixedThreadPool(4, namedFactory);
 #### newFixedThreadPool(int nThreads)
 
 **Internal structure:**
+
 - Backed by `ThreadPoolExecutor` with `corePoolSize = nThreads`, `maximumPoolSize = nThreads`
 - Uses an unbounded `LinkedBlockingQueue`
 - Keeps all threads alive regardless of idle time (`keepAliveTime = 0`)
 
 **When to use:**
+
 - I/O-bound operations where you know the concurrency limit (DB connections, HTTP calls).
 - Workloads with predictable, bounded concurrency requirements.
 - When you need to prevent resource exhaustion — this pool self-limits.
 
 **Limitations:**
-- The unbounded `LinkedBlockingQueue` can cause **OOM** if producers outpace consumers. Tasks queue indefinitely rather than being rejected.
+
+- The unbounded `LinkedBlockingQueue` can cause **OOM** if producers outpace consumers. Tasks queue indefinitely rather
+  than being rejected.
 - If all threads are blocked waiting for I/O, the pool stalls (no thread growth).
 - **Fix for OOM risk**: Use a bounded queue with a `RejectedExecutionHandler`:
   ```java
@@ -120,40 +125,48 @@ When the queue is full and all threads are busy, the executor must decide how to
 built-in policies:
 
 1. **AbortPolicy** (default)
-  - **Behavior:** Throws `RejectedExecutionException` when a task cannot be accepted.
-  - **Use case:** When you want to fail fast and make the caller aware that the system is overloaded. Forces the caller
-    to handle rejection explicitly.
-  - **Production reality:** Good for critical systems where you prefer explicit failure over silent data loss.
+
+- **Behavior:** Throws `RejectedExecutionException` when a task cannot be accepted.
+- **Use case:** When you want to fail fast and make the caller aware that the system is overloaded. Forces the caller
+  to handle rejection explicitly.
+- **Production reality:** Good for critical systems where you prefer explicit failure over silent data loss.
+
    ```java
    new ThreadPoolExecutor.AbortPolicy()
    ```
 
 2. **CallerRunsPolicy**
-  - **Behavior:** Executes the rejected task **in the caller's thread** (the thread that called `execute()`).
-  - **Use case:** Natural backpressure mechanism — if the pool is overwhelmed, the producer slows down because it's now
-    doing the work itself.
-  - **Production reality:** Excellent for rate-limiting producers. The caller cannot submit new tasks while it's
-    executing the current one.
-  - **Warning:** The caller thread is blocked during execution. Not suitable if the caller thread must remain
-    responsive (e.g., HTTP request handler thread).
+
+- **Behavior:** Executes the rejected task **in the caller's thread** (the thread that called `execute()`).
+- **Use case:** Natural backpressure mechanism — if the pool is overwhelmed, the producer slows down because it's now
+  doing the work itself.
+- **Production reality:** Excellent for rate-limiting producers. The caller cannot submit new tasks while it's
+  executing the current one.
+- **Warning:** The caller thread is blocked during execution. Not suitable if the caller thread must remain
+  responsive (e.g., HTTP request handler thread).
+
    ```java
    new ThreadPoolExecutor.CallerRunsPolicy()
    ```
 
 3. **DiscardPolicy**
-  - **Behavior:** Silently discards the rejected task. No exception, no execution.
-  - **Use case:** Non-critical background work where some loss is acceptable (metrics, best-effort logging).
-  - **Production reality:** Dangerous — you lose data without knowing. Use only when task loss is truly acceptable.
+
+- **Behavior:** Silently discards the rejected task. No exception, no execution.
+- **Use case:** Non-critical background work where some loss is acceptable (metrics, best-effort logging).
+- **Production reality:** Dangerous — you lose data without knowing. Use only when task loss is truly acceptable.
+
    ```java
    new ThreadPoolExecutor.DiscardPolicy()
    ```
 
 4. **DiscardOldestPolicy**
-  - **Behavior:** Discards the **oldest** unprocessed task in the queue (head of the queue), then retries adding the new
-    task.
-  - **Use case:** When newer data is more valuable than older data (real-time feeds, latest metrics).
-  - **Production reality:** Risk of starvation — if the system is continuously overloaded, old tasks never execute. Can
-    violate ordering guarantees.
+
+- **Behavior:** Discards the **oldest** unprocessed task in the queue (head of the queue), then retries adding the new
+  task.
+- **Use case:** When newer data is more valuable than older data (real-time feeds, latest metrics).
+- **Production reality:** Risk of starvation — if the system is continuously overloaded, old tasks never execute. Can
+  violate ordering guarantees.
+
    ```java
    new ThreadPoolExecutor.DiscardOldestPolicy()
    ```
@@ -164,48 +177,60 @@ You can implement your own policy by implementing `RejectedExecutionHandler`:
 #### newCachedThreadPool()
 
 **Internal structure:**
+
 - `ThreadPoolExecutor` with `corePoolSize = 0`, `maximumPoolSize = Integer.MAX_VALUE`
 - Uses `SynchronousQueue` (handoff queue — no real capacity)
 - `keepAliveTime = 60 seconds` — idle threads are terminated
 
 **When to use:**
+
 - Many short-lived async tasks (micro-second to low-millisecond operations).
 - When you want to reuse idle threads but not maintain a minimum pool.
 - Good fire-and-forget workloads where tasks don't block.
 
 **Limitations:**
-- **Can create unlimited threads** — under sustained load, this will exhaust memory and crash the JVM. Each OS thread costs ~1MB of stack space.
+
+- **Can create unlimited threads** — under sustained load, this will exhaust memory and crash the JVM. Each OS thread
+  costs ~1MB of stack space.
 - The `SynchronousQueue` means if all threads are busy, a **new** thread is created immediately — there is no queueing.
 - Not suitable for I/O-heavy workloads where threads block.
 
-**Production reality:** Almost never recommended. `newFixedThreadPool` or custom `ThreadPoolExecutor` with bounded resources is safer.
+**Production reality:** Almost never recommended. `newFixedThreadPool` or custom `ThreadPoolExecutor` with bounded
+resources is safer.
 
 #### newSingleThreadExecutor()
 
 **Internal structure:**
+
 - `ThreadPoolExecutor` with `corePoolSize = 1`, `maximumPoolSize = 1`
 - Uses an unbounded `LinkedBlockingQueue`
 - Guarantees sequential task execution — no two tasks run concurrently
 
 **When to use:**
+
 - When tasks MUST execute in order (event processing, audit logging, sequential file I/O).
 - When thread-safety of shared state is achieved through single-threaded access (no locks needed).
 - As a safe replacement for `volatile` + manual thread management.
 
 **Limitations:**
-- **Single point of failure** — if the single thread throws an uncaught exception, a replacement is created, but tasks in flight are lost.
+
+- **Single point of failure** — if the single thread throws an uncaught exception, a replacement is created, but tasks
+  in flight are lost.
 - Throughput limited to one task at a time.
 - Same unbounded queue issue as `newFixedThreadPool`.
-- Tasks are not truly guaranteed to execute — if the executor is shut down while tasks are queued, they're discarded (unless you handle pending tasks).
+- Tasks are not truly guaranteed to execute — if the executor is shut down while tasks are queued, they're discarded (
+  unless you handle pending tasks).
 
 #### newScheduledThreadPool(int corePoolSize)
 
 **Internal structure:**
+
 - Extends `ThreadPoolExecutor` but uses `DelayedWorkQueue` internally (a `PriorityQueue` by delay time)
 - Core threads are kept alive (`allowCoreThreadTimeOut = false`)
 - No max pool limit but scheduled tasks are bounded by scheduling behavior
 
 **Scheduling methods:**
+
 ```java
 // One-shot: executes once after the delay
 scheduler.schedule(task, 5, TimeUnit.SECONDS);
@@ -221,35 +246,44 @@ scheduler.scheduleWithFixedDelay(task, initialDelay, delay, unit);
 ```
 
 **When to use:**
+
 - Heartbeats, health checks, cache eviction, metrics reporting.
 - Cron-like periodic jobs that run within the same JVM.
 
 **Limitations:**
-- **Exception swallowing:** If a scheduled task throws an uncaught exception, it is silently cancelled — subsequent scheduled runs are aborted. Always wrap with try/catch.
-- **No persistence:** Scheduled tasks are in-memory. JVM restart = lost schedule.
-- **Thread count:** Only `corePoolSize` threads available. If a delayed task blocks, it can prevent other tasks from running.
 
-**Interview tip:** For distributed systems, prefer Quartz, ShedLock, or DB-based scheduling — a single JVM scheduler does not survive restarts or scale across nodes.
+- **Exception swallowing:** If a scheduled task throws an uncaught exception, it is silently cancelled — subsequent
+  scheduled runs are aborted. Always wrap with try/catch.
+- **No persistence:** Scheduled tasks are in-memory. JVM restart = lost schedule.
+- **Thread count:** Only `corePoolSize` threads available. If a delayed task blocks, it can prevent other tasks from
+  running.
+
+**Interview tip:** For distributed systems, prefer Quartz, ShedLock, or DB-based scheduling — a single JVM scheduler
+does not survive restarts or scale across nodes.
 
 #### newWorkStealingPool()
 
 **Internal structure:**
-- Backed by `ForkJoinPool` (not `ThreadPoolExecutor`)
+
+- Backed by [`ForkJoinPool`](./experiment/ForkJoinPoolExperiment.java) (not `ThreadPoolExecutor`)
 - `parallelism = Runtime.getRuntime().availableProcessors()` by default
 - Each thread has its own **work queue** (deque) instead of a shared queue
 - Idle threads **steal** work from the tail of other threads' queues
 
 **Stealing mechanism:**
+
 - Tasks are submitted to the current thread's local deque (LIFO).
 - When a thread is idle, it picks a random victim thread and steals from the **end** (FIFO) of the deque.
 - This reduces contention on a shared queue — each thread operates on its own data.
 
 **When to use:**
+
 - CPU-intensive, fork-join style computations (parallel streams, recursive algorithms, divide-and-conquer).
 - When the workload can be decomposed into sub-tasks (merge sort, parallel map, tree traversal).
 - Tasks are short-lived and compute-heavy (not I/O).
 
 **Limitations:**
+
 - **Poor for I/O-bound tasks.** If all threads block on I/O, there's no thread to steal from.
 - **Not suitable** for long-running blocking operations (it wastes parallelism).
 - Order of execution is **not guaranteed** — stealing introduces non-determinism.
@@ -259,7 +293,9 @@ scheduler.scheduleWithFixedDelay(task, initialDelay, delay, unit);
 
 #### What Are Virtual Threads?
 
-Virtual threads are **lightweight, JVM-managed threads** implemented in Project Loom. Unlike platform threads (which map 1:1 to OS threads), virtual threads map **many-to-few** onto a small pool of OS "carrier" threads (the ForkJoinPool default workers).
+Virtual threads are **lightweight, JVM-managed threads** implemented in Project Loom. Unlike platform threads (which map
+1:1 to OS threads), virtual threads map **many-to-few** onto a small pool of OS "carrier" threads (the `ForkJoinPool`
+default workers).
 
 ```
 Virtual Thread (~1 KB stack)
@@ -271,7 +307,9 @@ Virtual Thread (~1 KB stack)
     └──> Resume execution
 ```
 
-A single JVM can host **millions** of virtual threads. When a virtual thread hits a blocking call, the JVM **unmounts** it from its carrier thread, allowing that carrier to run another virtual thread. This is automatic — no callback rewriting needed.
+A single JVM can host **millions** of virtual threads. When a virtual thread hits a blocking call, the JVM **unmounts**
+it from its carrier thread, allowing that carrier to run another virtual thread. This is automatic — no callback
+rewriting needed.
 
 #### Creating Virtual Threads
 
@@ -306,31 +344,37 @@ try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 #### How Scheduling Works: Mount/Unmount Cycle
 
 1. **Submit** a virtual thread to the scheduler.
-2. The JVM picks an idle **carrier thread** from the ForkJoinPool and **mounts** the virtual thread onto it.
-3. The virtual thread **runs** until it hits a **blocking operation** (`Thread.sleep`, `InputStream.read`, `lock.lock()`, `BlockingQueue.take`).
+2. The JVM picks an idle **carrier thread** from the `ForkJoinPool` and **mounts** the virtual thread onto it.
+3. The virtual thread **runs** until it hits a **blocking operation** (`Thread.sleep`, `InputStream.read`,
+   `lock.lock()`, `BlockingQueue.take`).
 4. The JVM **unmounts** the virtual thread, parks it, and the carrier thread is freed for another virtual thread.
-5. When the blocking operation completes (e.g., network data arrives), the virtual thread is **re-scheduled** and mounted on any available carrier.
+5. When the blocking operation completes (e.g., network data arrives), the virtual thread is **re-scheduled** and
+   mounted on any available carrier.
 6. The virtual thread **resumes** exactly where it left off — stack intact, local variables preserved.
 
-This is **not cooperative multitasking** — the JVM handles the parking/unparking transparently for all JDK blocking points.
+This is **not cooperative multitasking** — the JVM handles the parking/unparking transparently for all JDK blocking
+points.
 
 #### When to Use Virtual Threads
 
-| Scenario | Platform Threads | Virtual Threads |
-|----------|-----------------|-----------------|
+| Scenario                                      | Platform Threads              | Virtual Threads                            |
+|-----------------------------------------------|-------------------------------|--------------------------------------------|
 | I/O-heavy: HTTP calls, DB queries, file reads | Wasteful (threads block idle) | **Ideal** — millions of concurrent I/O ops |
-| Blocking queues (producer-consumer) | Threads park, waste resources | **Ideal** — park/unmount free of charge |
-| HTTP server handlers (Tomcat, Jetty, Spring) | Thread pool sizing critical | **Ideal** — one virtual thread per request |
-| CPU-intensive (math, parsing, hash) | Fine (threads stay busy) | **Avoid** — pins carrier thread |
-| Low concurrency (<100 threads) | Fine, no benefit needed | Unnecessary overhead |
+| Blocking queues (producer-consumer)           | Threads park, waste resources | **Ideal** — park/unmount free of charge    |
+| HTTP server handlers (Tomcat, Jetty, Spring)  | Thread pool sizing critical   | **Ideal** — one virtual thread per request |
+| CPU-intensive (math, parsing, hash)           | Fine (threads stay busy)      | **Avoid** — pins carrier thread            |
+| Low concurrency (<100 threads)                | Fine, no benefit needed       | Unnecessary overhead                       |
 
-**Key insight:** Virtual threads are the answer to: *"My application spends most of its time waiting — how do I handle 100k simultaneous requests?"*
+**Key insight:** Virtual threads are the answer to: *"My application spends most of its time waiting — how do I handle
+100k simultaneous requests?"*
 
-The traditional answer was "async/reactive with callbacks" (Netty, WebFlux). Virtual threads give you the same throughput with **synchronous blocking code** — the mental model is preserved.
+The traditional answer was "async/reactive with callbacks" (Netty, WebFlux). Virtual threads give you the same
+throughput with **synchronous blocking code** — the mental model is preserved.
 
 #### When NOT to Use Virtual Threads
 
 **1. CPU-intensive computations**
+
 ```java
 // BAD: Virtual threads don't help with CPU work
 // This pins the carrier thread — same throughput as platform threads
@@ -338,14 +382,20 @@ for (int i = 0; i < 10_000; i++) {
     executor.submit(() -> expensiveHashCalculation(data));
 }
 ```
-Carriers are OS threads. If all are busy computing, adding more virtual threads just increases scheduling overhead. Use `newFixedThreadPool(n)` where n = CPU cores.
+
+Carriers are OS threads. If all are busy computing, adding more virtual threads just increases scheduling overhead. Use
+`newFixedThreadPool(n)` where n = CPU cores.
 
 **2. Synchronized blocks (carrier thread pinning)**
+
 ```java
 // BAD: synchronized keyword pins the carrier thread
 public synchronized void doWork() { ... }
 ```
-The JVM cannot unmount a virtual thread inside a `synchronized` block because the monitor is held on the carrier thread itself. The carrier is **pinned** — it cannot be reused. Use `ReentrantLock` instead:
+
+The JVM cannot unmount a virtual thread inside a `synchronized` block because the monitor is held on the carrier thread
+itself. The carrier is **pinned** — it cannot be reused. Use `ReentrantLock` instead:
+
 ```java
 // GOOD: ReentrantLock is virtual-thread-friendly
 private final ReentrantLock lock = new ReentrantLock();
@@ -356,7 +406,8 @@ public void doWork() {
 ```
 
 **3. Native method calls**
-JNI calls and native code block the carrier thread. The JVM cannot inspect what the native code is doing, so it cannot unmount. This is not common but worth knowing.
+JNI calls and native code block the carrier thread. The JVM cannot inspect what the native code is doing, so it cannot
+unmount. This is not common but worth knowing.
 
 #### Detection of Pinned Threads
 
@@ -367,7 +418,8 @@ JNI calls and native code block the carrier thread. The JVM cannot inspect what 
 // java -Djdk.tracePinnedThreads=full ...
 ```
 
-This prints a warning whenever a virtual thread is pinned, showing the exact line causing the issue. Essential for debugging performance regressions when migrating to virtual threads.
+This prints a warning whenever a virtual thread is pinned, showing the exact line causing the issue. Essential for
+debugging performance regressions when migrating to virtual threads.
 
 #### Structured Concurrency (Java 21 Preview, Java 25 Expected GA)
 
@@ -394,10 +446,12 @@ try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
 ```
 
 **StructuredTaskScope policies:**
+
 - `ShutdownOnFailure`: If ANY task fails, cancel all others. (Fan-out with fail-fast)
 - `ShutdownOnSuccess`: If ANY task succeeds, cancel all others. (Fastest-of-N)
 
 **Why structured concurrency matters:**
+
 - No orphaned threads on error paths.
 - Clear parent-child lifecycle relationships.
 - Automatic resource cleanup on scope exit.
@@ -405,19 +459,24 @@ try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
 
 #### Virtual Threads vs Platform Threads: Performance
 
-| Metric | Platform Threads | Virtual Threads |
-|--------|-----------------|-----------------|
-| Memory overhead | ~1 MB per thread (stack) | ~few KB per thread |
-| Creation cost | ~OS call (expensive) | ~object allocation (microseconds) |
-| Switching cost | OS context switch (~5-10 μs) | JVM park/unmount (~sub-microsecond) |
-| Scalability | ~thousands before OOM | **millions** |
-| Debugging | Standard thread dumps | `jcmd <pid> Thread.dump_to_file` (shows VTs) |
-| `ThreadLocal` support | ✅ Native | ✅ Works (each VT has its own locals) |
-| `InheritableThreadLocal` | ✅ Propagated on creation | ❌ Not inherited (VTs not OS thread children) |
+| Metric                   | Platform Threads             | Virtual Threads                              |
+|--------------------------|------------------------------|----------------------------------------------|
+| Memory overhead          | ~1 MB per thread (stack)     | ~few KB per thread                           |
+| Creation cost            | ~OS call (expensive)         | ~object allocation (microseconds)            |
+| Switching cost           | OS context switch (~5-10 μs) | JVM park/unmount (~sub-microsecond)          |
+| Scalability              | ~thousands before OOM        | **millions**                                 |
+| Debugging                | Standard thread dumps        | `jcmd <pid> Thread.dump_to_file` (shows VTs) |
+| `ThreadLocal` support    | ✅ Native                     | ✅ Works (each VT has its own locals)         |
+| `InheritableThreadLocal` | ✅ Propagated on creation     | ❌ Not inherited (VTs not OS thread children) |
 
 #### Practical Interview Answer: Platform vs Virtual Threads
 
-> *"Use platform threads for CPU-bound work — you want to match the number of OS threads to CPU cores. Use virtual threads for I/O-bound work — they let you write simple blocking code while achieving async-level throughput. The key insight is that virtual threads remove the need for reactive programming complexity in most cases. However, you must avoid `synchronized` (use `ReentrantLock`), be aware of JNI pinning, and still apply resource governance (connection pools, rate limits) — just because you can open 1M virtual threads doesn't mean you should blast the database with 1M simultaneous queries."*
+> *"Use platform threads for CPU-bound work — you want to match the number of OS threads to CPU cores. Use virtual
+threads for I/O-bound work — they let you write simple blocking code while achieving async-level throughput. The key
+insight is that virtual threads remove the need for reactive programming complexity in most cases. However, you must
+avoid `synchronized` (use `ReentrantLock`), be aware of JNI pinning, and still apply resource governance (connection
+pools, rate limits) — just because you can open 1M virtual threads doesn't mean you should blast the database with 1M
+simultaneous queries."*
 
 ### CompletableFuture: Async Pipelines
 
@@ -655,7 +714,8 @@ concurrentMap.compute("counter",(k, v) -> {
 
 ### BlockingQueue: Producer-Consumer Pattern
 
-In `java.util.concurrent`, the choice between a bounded and unbounded queue determines how your system handles **backpressure** — what happens when producers outpace consumers.
+In `java.util.concurrent`, the choice between a bounded and unbounded queue determines how your system handles *
+*backpressure** — what happens when producers outpace consumers.
 
 #### Bounded vs Unbounded Queues
 
@@ -683,27 +743,31 @@ BlockingQueue<String> unbounded = new LinkedBlockingQueue<>(); // DANGER in prod
 
 #### Comparison
 
-| Feature | Bounded Queue | Unbounded Queue |
-| :--- | :--- | :--- |
-| **Capacity** | Fixed (e.g., 100) | Technically infinite (`Integer.MAX_VALUE`) |
-| **Memory Safety** | High (prevents OOME) | Low (can cause OOME under load) |
-| **Throughput** | Limited by capacity | High (producers never wait) |
-| **Use Case** | Production stability, bounded RAM | Brief spikes, low-latency, controlled workloads |
+| Feature           | Bounded Queue                     | Unbounded Queue                                 |
+|:------------------|:----------------------------------|:------------------------------------------------|
+| **Capacity**      | Fixed (e.g., 100)                 | Technically infinite (`Integer.MAX_VALUE`)      |
+| **Memory Safety** | High (prevents OOME)              | Low (can cause OOME under load)                 |
+| **Throughput**    | Limited by capacity               | High (producers never wait)                     |
+| **Use Case**      | Production stability, bounded RAM | Brief spikes, low-latency, controlled workloads |
 
-> **Production rule: bounded queues are almost always preferred.** An unbounded queue is like an infinite to-do list — it looks great because you never say "no" to a task, but eventually your desk (RAM) is buried. Bounded queues build a fail-fast system that protects your application's memory.
+> **Production rule: bounded queues are almost always preferred.** An unbounded queue is like an infinite to-do list —
+> it looks great because you never say "no" to a task, but eventually your desk (RAM) is buried. Bounded queues build a
+> fail-fast system that protects your application's memory.
 
-> **Note on `LinkedBlockingQueue`:** It is a hybrid. Make it bounded by providing a capacity: `new LinkedBlockingQueue<>(100)`. Often preferred over `ArrayBlockingQueue` in high-contention scenarios because it uses a "two-lock queue" algorithm with separate locks for head and tail, offering better concurrency.
+> **Note on `LinkedBlockingQueue`:** It is a hybrid. Make it bounded by providing a capacity:
+`new LinkedBlockingQueue<>(100)`. Often preferred over `ArrayBlockingQueue` in high-contention scenarios because it uses
+> a "two-lock queue" algorithm with separate locks for head and tail, offering better concurrency.
 
 #### BlockingQueue Implementations
 
-| Implementation | Bounded? | Internal Structure | Locking | Best For |
-|---|---|---|---|---|
-| `ArrayBlockingQueue` | Yes | Circular array | Single `ReentrantLock` for both put/take | Bounded, predictable memory |
-| `LinkedBlockingQueue` | Optionally | Linked nodes | Two locks (head/take, tail/put) | High-throughput producer-consumer |
-| `PriorityBlockingQueue` | No | Binary heap | Single lock + condition | Priority-ordered processing |
-| `DelayQueue` | No | PriorityQueue + Delayed | Single lock + condition | Time-ordered execution (challenge10) |
-| `SynchronousQueue` | Yes (size 0) | No real storage | Handoff directly | `newCachedThreadPool` — zero buffering |
-| `LinkedTransferQueue` | No | Linked nodes + CAS | Lock-free for uncontended | Ultra-low latency, handoff |
+| Implementation          | Bounded?     | Internal Structure      | Locking                                  | Best For                               |
+|-------------------------|--------------|-------------------------|------------------------------------------|----------------------------------------|
+| `ArrayBlockingQueue`    | Yes          | Circular array          | Single `ReentrantLock` for both put/take | Bounded, predictable memory            |
+| `LinkedBlockingQueue`   | Optionally   | Linked nodes            | Two locks (head/take, tail/put)          | High-throughput producer-consumer      |
+| `PriorityBlockingQueue` | No           | Binary heap             | Single lock + condition                  | Priority-ordered processing            |
+| `DelayQueue`            | No           | PriorityQueue + Delayed | Single lock + condition                  | Time-ordered execution (challenge10)   |
+| `SynchronousQueue`      | Yes (size 0) | No real storage         | Handoff directly                         | `newCachedThreadPool` — zero buffering |
+| `LinkedTransferQueue`   | No           | Linked nodes + CAS      | Lock-free for uncontended                | Ultra-low latency, handoff             |
 
 #### Producer-Consumer Code
 
