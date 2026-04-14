@@ -1,7 +1,5 @@
 # Java DSA Interview Preparation Guide
 
-Target companies: Revolut, Deel, RevenueCat, GitHub, Docker, Datadog
-
 ---
 
 ## Table of Contents

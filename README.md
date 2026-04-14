@@ -1,7 +1,6 @@
 # CodingChallenges-Java
 
-Java coding challenges and interview preparation guides for senior software engineering roles at top-tier tech
-companies (Revolut, Deel, RevenueCat, GitHub, Docker, Datadog).
+Java coding challenges and interview preparation guides for senior software engineering roles at top-tier tech.
 
 ---
 
