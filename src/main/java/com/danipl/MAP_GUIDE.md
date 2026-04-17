@@ -38,10 +38,10 @@ Map<K, V> map = new HashMap<>();
 
 ### When to Use
 
-- Default choice for key-value storage when ordering doesn't matter
-- Memoization in DP/recursion (our current pattern in `development/recursion/`)
-- Character frequency counting, entity lookup, caches
-- Non-concurrent scenarios with single-threaded access
+- Use as your default for key-value storage when you don't care about ordering.
+- Great for memoization in DP or recursion problems — it's the pattern we use throughout `development/recursion/`.
+- Common in character frequency counting, entity lookups, and lightweight caching.
+- Only for single-threaded scenarios — it's not thread-safe.
 
 ### Magic Methods (Java 21)
 

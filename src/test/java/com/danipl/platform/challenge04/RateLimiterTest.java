@@ -161,7 +161,7 @@ class RateLimiterTest {
                     try {
                         for (int i = 0; i < 20; i++) {
                             if (rl.tryAcquire()) total.incrementAndGet();
-                            Thread.sleep(20);
+                            Thread.sleep(100);
                         }
                     } catch (Exception ignored) {
                     } finally {

@@ -4,8 +4,9 @@
 
 ### What You're Building
 
-A **thread-safe weighted load balancer** - routes incoming requests across a pool of backend servers, distributing
-traffic proportionally to each server's configured weight. Heavier servers receive more traffic.
+A **thread-safe weighted load balancer** — routes incoming requests across a pool of backend servers, distributing
+traffic proportionally to each server's configured weight. Heavier servers receive more requests, lighter ones receive
+fewer.
 
 ### Core Contract
 
@@ -34,11 +35,13 @@ next() ───────────────────────┘ 
 
 ### What Interviewers Evaluate
 
-1. **Weight distribution correctness** - servers receive traffic proportional to their weights
-2. **Thread safety** - concurrent `add`/`remove`/`next` don't corrupt state or crash
-3. **Dynamic reconfiguration** - servers can be added/removed at runtime without disrupting routing
-4. **Complexity awareness** - candidate explains time/space trade-offs of their algorithm choice
-5. **Edge case handling** - empty pool, invalid weights, duplicate servers, concurrent mutation
+1. **Weight distribution correctness** — servers must receive traffic proportional to their configured weights, not just
+   equal shares.
+2. **Thread safety** — concurrent `add`, `remove`, and `next` operations don't corrupt state or crash under load.
+3. **Dynamic reconfiguration** — servers can be added or removed at runtime without disrupting active routing.
+4. **Complexity awareness** — you should be able to explain the time and space trade-offs of your chosen algorithm.
+5. **Edge case handling** — empty pool, invalid weights, duplicate servers, and concurrent mutations all need
+   consideration.
 
 ---
 
@@ -81,13 +84,13 @@ Draw the routing flow first. Every input validation and every state change is a 
 
 ### Minute 0-2: Clarify Requirements
 
-Ask the interviewer:
+Before jumping into code, clarify the requirements with the interviewer:
 
-- *"Should routing be deterministic (round-robin) or probabilistic (weighted random)?"* → Both are valid; pick one and
-  explain trade-offs.
-- *"What happens when the same server is added twice with different weights?"* → Merge weights.
-- *"Should remove() throw if server doesn't exist?"* → No, make it idempotent.
-- *"How should thread safety work?"* → Concurrent `next()` calls should not block each other if possible.
+- *"Should routing be deterministic (round-robin) or probabilistic (weighted random)?"* → Both are valid approaches;
+  pick one and be ready to explain the trade-offs.
+- *"What happens when the same server is added twice with different weights?"* → Merge the weights together.
+- *"Should remove() throw if the server doesn't exist?"* → No — make it idempotent, just do nothing.
+- *"How should thread safety work?"* → Concurrent `next()` calls shouldn't block each other if possible.
 
 ### Minute 2-5: Pick the Algorithm
 

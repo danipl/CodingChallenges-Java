@@ -4,8 +4,9 @@
 
 ### What You're Building
 
-A **thread-safe Circuit Breaker** - a state machine that protects against cascading failures in distributed systems by
-stopping requests to unhealthy downstream services.
+A **thread-safe Circuit Breaker** — a state machine that protects your service against cascading failures in distributed
+systems. When a downstream service starts failing, the breaker opens and stops sending requests, giving the service time
+to recover.
 
 ### Core Contract
 
@@ -31,11 +32,12 @@ CLOSED ──(N failures)──▶ OPEN ──(timeout expires)──▶ HALF_OP
 
 ### What Interviewers Evaluate
 
-1. **State machine correctness** - all transitions match the contract
-2. **Thread safety** - concurrent calls don't corrupt state or lose metrics
-3. **Exception handling** - original exceptions propagate, checked exceptions wrapped
-4. **Observability** - metrics are accurate under contention
-5. **Testability** - `Clock` abstraction instead of `System.currentTimeMillis()`
+1. **State machine correctness** — all transitions match the contract exactly, no missing paths.
+2. **Thread safety** — concurrent calls from multiple threads don't corrupt state or lose metrics.
+3. **Exception handling** — the original exception from the supplier must propagate, and checked exceptions should be
+   wrapped.
+4. **Observability** — metrics are accurate even under concurrent access from multiple threads.
+5. **Testability** — using a `Clock` abstraction instead of `System.currentTimeMillis()` so tests can control time.
 
 ---
 
@@ -43,7 +45,8 @@ CLOSED ──(N failures)──▶ OPEN ──(timeout expires)──▶ HALF_OP
 
 ### How to Identify Them Before Coding
 
-Draw the state transition table first. Every transition is a potential edge case.
+Start by drawing the state transition table. Every transition between states is a potential edge case you need to watch
+for.
 
 | #  | Edge Case                            | How It Surfaces                                                      | How to Handle                                                            |
 |----|--------------------------------------|----------------------------------------------------------------------|--------------------------------------------------------------------------|
@@ -82,12 +85,13 @@ Draw the state transition table first. Every transition is a potential edge case
 
 ### Minute 0-2: Clarify Requirements
 
-Ask the interviewer:
+Take a moment to ask the interviewer clarifying questions before jumping into code:
 
-- *"Should I count consecutive failures or failures in a sliding window?"* → This challenge uses **consecutive**.
-- *"How should checked exceptions be handled?"* → Wrap in `RuntimeException`.
-- *"Is only one probe allowed in HALF_OPEN?"* → Yes, single probe.
-- *"Should forceOpen() override the timeout?"* → Yes, only `reset()` can close it.
+- *"Should I count consecutive failures or failures in a sliding window?"* → This challenge uses **consecutive**
+  failures.
+- *"How should checked exceptions be handled?"* → Wrap them in `RuntimeException`.
+- *"Is only one probe allowed in HALF_OPEN?"* → Yes, exactly one probe at a time.
+- *"Should forceOpen() override the timeout?"* → Yes — only `reset()` can close a manually opened breaker.
 
 ### Minute 2-5: Design the State Machine
 

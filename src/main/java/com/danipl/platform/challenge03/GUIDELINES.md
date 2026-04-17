@@ -4,9 +4,9 @@
 
 ### What You're Building
 
-A **thread-safe Dependency Resolver** that computes a valid build order for libraries given their dependency graph.
-This is a classic **topological sort** problem with **cycle detection** — the same algorithm used by Maven, Gradle,
-npm, and package managers to resolve transitive dependencies.
+A **thread-safe Dependency Resolver** that computes a valid build order for libraries given their dependency graph. This
+is a classic **topological sort** problem with **cycle detection** — the same algorithm used by Maven, Gradle, npm, and
+other package managers to resolve transitive dependencies.
 
 ### Core Contract
 
@@ -44,12 +44,15 @@ npm, and package managers to resolve transitive dependencies.
 
 ### What Interviewers Evaluate
 
-1. **Graph modeling** — representing a directed graph with adjacency lists or equivalent
-2. **Topological sort correctness** — Kahn's (BFS) or DFS-based, all dependencies before dependents
-3. **Cycle detection** — identifying and reporting circular dependencies (A → B → C → A)
-4. **Thread safety** — concurrent `add()` + `resolveBuildOrder()` don't produce corrupted results
-5. **Algorithmic thinking** — O(V + E) time, not brute force
-6. **Edge cases** — empty graph, disconnected components, self-loops, missing implicit nodes
+1. **Graph modeling** — how you represent a directed graph, typically with adjacency lists or something equivalent.
+2. **Topological sort correctness** — using Kahn's (BFS) or DFS-based approach, ensuring all dependencies come before
+   their dependents.
+3. **Cycle detection** — identifying and reporting circular dependencies like A → B → C → A.
+4. **Thread safety** — concurrent `add()` and `resolveBuildOrder()` calls don't produce corrupted or inconsistent
+   results.
+5. **Algorithmic thinking** — aiming for O(V + E) time complexity rather than brute-force approaches.
+6. **Edge case coverage** — empty graphs, disconnected components, self-loops, and dependencies that were never
+   explicitly registered.
 
 ---
 
@@ -94,12 +97,12 @@ Map the graph structure. Every structural assumption is a potential edge case.
 
 ### Minute 0-2: Clarify Requirements
 
-Ask the interviewer:
+Start by clarifying the requirements with the interviewer before writing any code:
 
-- *"Should I detect cycles and throw, or return an empty list?"* → Throw `CircularDependencyException`.
-- *"What about a library that appears only as a dependency but was never explicitly added?"* → Treat it as a node with
-  no outgoing deps.
-- *"Duplicate dependencies for the same library?"* → Merge / deduplicate.
+- *"Should I detect cycles and throw, or just return an empty list?"* → Throw a `CircularDependencyException`.
+- *"What about a library that only appears as a dependency and was never explicitly added?"* → Treat it as a node with
+  no outgoing dependencies — it still needs to appear in the build order.
+- *"What if the same dependency is listed twice for a library?"* → Deduplicate them so we don't double-count in-degrees.
 - *"Do I need to handle concurrent access?"* → Yes — `add()` and `resolveBuildOrder()` can be called from different
   threads.
 
