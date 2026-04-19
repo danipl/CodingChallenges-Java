@@ -1,5 +1,54 @@
 # Java 21 Queue/Deque Implementations Guide
 
+## Quick-Reference: Implementation Selection Matrix
+
+| Use Case                                     | Best Choice             | Key Reason                                      | Ordering  | Thread-Safe | Blocking | offer/poll | Nulls | Bounded  |
+|----------------------------------------------|-------------------------|-------------------------------------------------|-----------|-------------|----------|------------|-------|----------|
+| **Default Deque (non-concurrent)**           | `ArrayDeque`            | Fastest, resizable circular array               | FIFO/LIFO | ❌           | ❌        | O(1)       | ❌     | No       |
+| **Default Queue (non-concurrent)**           | `ArrayDeque`            | Faster than `LinkedList` for queue ops          | FIFO      | ❌           | ❌        | O(1)       | ❌     | No       |
+| **Stack (LIFO)**                             | `ArrayDeque`            | Faster than `java.util.Stack`                   | LIFO      | ❌           | ❌        | O(1)       | ❌     | No       |
+| **Need null elements**                       | `LinkedList`            | Only non-concurrent Queue/Deque allowing nulls  | FIFO/LIFO | ❌           | ❌        | O(1)       | ✅     | No       |
+| **Need List + Deque in one**                 | `LinkedList`            | Implements both `List` and `Deque`              | FIFO/LIFO | ❌           | ❌        | O(1)       | ✅     | No       |
+| **Priority-ordered (single-thread)**         | `PriorityQueue`         | Binary min-heap, O(log n) insert/extract        | Priority  | ❌           | ❌        | O(log n)   | ❌     | No       |
+| **Top-K / heap sort**                        | `PriorityQueue`         | Maintain heap of size K                         | Priority  | ❌           | ❌        | O(log n)   | ❌     | No       |
+| **High-throughput concurrent (no blocking)** | `ConcurrentLinkedQueue` | Lock-free CAS, `size()` is O(n) ⚠️              | FIFO      | ✅ (CAS)     | ❌        | O(1)       | ❌     | No       |
+| **Producer-consumer (high throughput)**      | `LinkedBlockingQueue`   | Dual locks (put/take separate), less contention | FIFO      | ✅ (2 locks) | ✅        | O(1)       | ❌     | Either   |
+| **Bounded producer-consumer (low memory)**   | `ArrayBlockingQueue`    | Fixed array, single lock, must set capacity     | FIFO      | ✅ (1 lock)  | ✅        | O(1)       | ❌     | Required |
+| **Concurrent priority task execution**       | `PriorityBlockingQueue` | Thread-safe heap, unbounded                     | Priority  | ✅ (1 lock)  | Partial  | O(log n)   | ❌     | No       |
+| **Delayed/scheduled task execution**         | `DelayQueue`            | Elements expire after delay, `take()` blocks    | Delay     | ✅ (lock)    | Partial  | O(log n)   | ❌     | No       |
+| **Direct thread handoff (no buffering)**     | `SynchronousQueue`      | Zero-capacity, `put` blocks until `take` ready  | Handoff   | ✅ (CAS)     | ✅        | O(1)       | ❌     | Zero     |
+| **Concurrent work-stealing (double-ended)**  | `LinkedBlockingDeque`   | Only concurrent deque blocking at both ends     | FIFO/LIFO | ✅ (1 lock)  | ✅        | O(1)       | ❌     | Either   |
+| **BFS / topological sort**                   | `ArrayDeque`            | Kahn's algorithm, zero-in-degree node queue     | FIFO      | ❌           | ❌        | O(1)       | ❌     | No       |
+| **Sliding window algorithm**                 | `ArrayDeque`            | Add/remove at both ends efficiently             | FIFO      | ❌           | ❌        | O(1)       | ❌     | No       |
+
+### At-A-Glance Decision Flow
+
+```
+Need thread-safety?
+  ├─ YES → Need blocking (producer-consumer)?
+  │          ├─ YES → Need double-ended (both ends)?
+  │          │          └─ YES → LinkedBlockingDeque
+  │          │          └─ NO  → Need priority ordering?
+  │          │                     ├─ YES → PriorityBlockingQueue
+  │          │                     └─ NO  → Need bounded + low memory?
+  │          │                                ├─ YES → ArrayBlockingQueue
+  │          │                                └─ NO  → LinkedBlockingQueue
+  │          ├─ NO  → Need priority ordering?
+  │          │          ├─ YES → PriorityBlockingQueue
+  │          │          └─ NO  → Direct handoff (no buffering)?
+  │          │                     ├─ YES → SynchronousQueue
+  │          │                     └─ NO  → ConcurrentLinkedQueue
+  │          └─ Delayed execution?
+  │             └─ YES → DelayQueue
+  └─ NO  → Need priority ordering?
+             ├─ YES → PriorityQueue
+             └─ NO  → Need both List + Deque (or nulls)?
+                        ├─ YES → LinkedList
+                        └─ NO  → ArrayDeque (default)
+```
+
+---
+
 ## Overview
 
 Java provides multiple `Queue` and `Deque` implementations via `java.util` and `java.util.concurrent`. Each is

@@ -1,5 +1,35 @@
 # Java 21 Map Implementations Guide
 
+## Quick-Reference: Implementation Selection Matrix
+
+| Use Case                          | Best Choice                    | Key Reason                                      | Ordering  | Thread-Safe | get/put  | Null Keys | Null Values |
+|-----------------------------------|--------------------------------|-------------------------------------------------|-----------|-------------|----------|-----------|-------------|
+| **Default key-value storage**     | `HashMap`                      | Fastest general-purpose, O(1) avg               | None      | ❌           | O(1) avg | ✅ 1       | ✅ Multiple  |
+| **Predictable iteration order**   | `LinkedHashMap`                | Preserves insertion order, O(n) iteration       | Insertion | ❌           | O(1) avg | ✅ 1       | ✅ Multiple  |
+| **LRU cache**                     | `LinkedHashMap`                | `accessOrder=true` + `removeEldestEntry()`      | Access    | ❌           | O(1) avg | ✅ 1       | ✅ Multiple  |
+| **Sorted keys / range queries**   | `TreeMap`                      | `floorKey()`, `ceilingKey()`, `subMap()`        | Sorted    | ❌           | O(log n) | ❌         | ✅ Multiple  |
+| **Concurrent read/write**         | `ConcurrentHashMap`            | CAS-based, no `ConcurrentModificationException` | None      | ✅           | O(1) avg | ❌         | ❌           |
+| **Concurrent frequency counting** | `ConcurrentHashMap`            | `merge(key, 1, Long::sum)` atomic               | None      | ✅           | O(1) avg | ❌         | ❌           |
+| **Auto-expiring metadata cache**  | `WeakHashMap`                  | Keys GC'd when unreachable                      | None      | ❌           | O(1) avg | ✅ 1       | ✅ Multiple  |
+| **Immutable constant map**        | `Map.of()` / `Map.ofEntries()` | Zero-overhead, thread-safe read-only            | None      | ✅ (read)    | O(1)     | ❌         | ❌           |
+| **Legacy code (DO NOT use new)**  | ~~`Hashtable`~~                | Use `ConcurrentHashMap` instead                 | None      | ✅ (slow)    | O(1) avg | ❌         | ❌           |
+
+### At-A-Glance Decision Flow
+
+```
+Need thread-safety?
+  ├─ YES → Need sorted/range queries?
+  │          ├─ YES → Use concurrent wrapper around TreeMap (no native concurrent sorted map)
+  │          └─ NO  → ConcurrentHashMap
+  └─ NO  → Need sorted keys or range queries?
+             ├─ YES → TreeMap
+             └─ NO  → Need insertion/access order?
+                        ├─ YES → LinkedHashMap (LRU: accessOrder=true)
+                        └─ NO  → HashMap (default choice)
+```
+
+---
+
 ## Overview
 
 Java provides multiple `Map` implementations via `java.util` and `java.util.concurrent`. Each is optimized for different
