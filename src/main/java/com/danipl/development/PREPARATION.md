@@ -1,5 +1,34 @@
 # Java DSA Interview Preparation Guide
 
+> **Master Index**: Quick reference to all deep-dive guides below.
+
+## Quick Reference — All Guides
+
+### Collections
+
+- [List Guide](../LIST_GUIDE.md) — ArrayList, LinkedList, Vector, Stack selection
+- [Set Guide](../SET_GUIDE.md) — HashSet, TreeSet, LinkedHashSet, EnumSet
+- [Map Guide](../MAP_GUIDE.md) — HashMap, TreeMap, ConcurrentHashMap
+- [Queue/Stack Guide](../QUEUE_GUIDE.md) — ArrayDeque, PriorityQueue, BlockingQueues
+
+### Algorithms
+
+- [Sorting & Searching](../SORT_SEARCH_GUIDE.md) — Arrays.sort, binary search, custom
+- [Two Pointers & Sliding Window](../TWO_POINTERS_GUIDE.md) — Convergencing windows, Dutch flag
+- [Heap Patterns](../HEAP_GUIDE.md) — Top-K, merge K lists, median finder
+- [Graph Algorithms](../GRAPH_GUIDE.md) — BFS, DFS, Dijkstra, Union-Find, Topological Sort
+- [Tree Patterns](../TREE_GUIDE.md) — BST, traversals, Trie, AVL concepts
+- [Dynamic Programming](../DP_PATTERNS_GUIDE.md) — Memoization, tabulation, optimization
+- [Backtracking](../BACKTRACKING_GUIDE.md) — Permutations, combinations, subsets
+- [Monotonic Structures](../MONOTONIC_GUIDE.md) — Monotonic stack, deque patterns
+- [Interval Problems](../INTERVAL_GUIDE.md) — Merge, insert, meeting rooms
+
+### Advanced
+
+- [Bit Manipulation](../BIT_MANIPULATION_GUIDE.md) — XOR tricks, masking, counting
+- [String Processing](../STRING_GUIDE.md) — StringBuilder, regex, text blocks
+- [Competitive Programming I/O](../CP_IO_GUIDE.md) — FastReader, BufferedReader patterns
+
 ---
 
 ## Table of Contents
@@ -14,6 +43,8 @@
 ---
 
 ## Java Collections Decision Tree
+
+> **Note**: For detailed per-collection guides, see the Quick Reference section above.
 
 ```
 Need to store elements?
@@ -53,6 +84,8 @@ Need to store elements?
 ---
 
 ## Time Complexity Reference
+
+> **Note**: Each collection now has a dedicated guide with full complexity tables.
 
 ### ArrayList
 
@@ -105,7 +138,18 @@ Need to store elements?
 
 ## Essential Java Features for DSA
 
+> **Note**: See the Quick Reference section above for cross-references to all collection guides.
+
 ### Collections Framework
+
+> **See also**:
+> - [List Guide](../LIST_GUIDE.md) — ArrayList, LinkedList, Vector, Stack selection
+> - [Set Guide](../SET_GUIDE.md) — HashSet, TreeSet, LinkedHashSet, EnumSet
+> - [Map Guide](../MAP_GUIDE.md) — HashMap, TreeMap, ConcurrentHashMap
+> - [Queue/Stack Guide](../QUEUE_GUIDE.md) — ArrayDeque, PriorityQueue, BlockingQueues
+> - [STRING_GUIDE.md](../STRING_GUIDE.md) — StringBuilder details
+> - [CP_IO_GUIDE.md](../CP_IO_GUIDE.md) — I/O patterns
+> - [BIT_MANIPULATION_GUIDE.md](../BIT_MANIPULATION_GUIDE.md) — Number operations
 
 **When to use each interface:**
 
@@ -131,18 +175,10 @@ Queue<Integer> maxPq = new PriorityQueue<>(Collections.reverseOrder());  // Max-
 
 // Deque - double-ended
 Deque<Integer> deque = new ArrayDeque<>();
-deque.
-
-addFirst(1);  // O(1)
-deque.
-
-addLast(2);   // O(1)
-deque.
-
-removeFirst(); // O(1)
-deque.
-
-removeLast();  // O(1)
+deque.addFirst(1);  // O(1)
+deque.addLast(2);   // O(1)
+deque.removeFirst(); // O(1)
+deque.removeLast();  // O(1)
 ```
 
 **Example from codebase - RansomNote (HashMap frequency counting):**
@@ -268,15 +304,14 @@ GraphNode node = new GraphNode("A", List.of(nodeB, nodeC));
 
 ### StringBuilder vs StringBuffer
 
+> **See also**: [STRING_GUIDE.md](../STRING_GUIDE.md) — Full StringBuilder documentation including Java 21 features,
+> text blocks, and regex patterns.
+
 ```java
 // StringBuilder - use this (not synchronized, faster)
 StringBuilder sb = new StringBuilder();
-for(
-int i = 0;
-i<n;i++){
-        sb.
-
-append("Fizz");
+for(int i = 0; i<n; i++){
+    sb.append("Fizz");
 }
 String result = sb.toString();
 
@@ -301,23 +336,15 @@ public List<String> fizzBuzz(int n) {
 ```java
 // Sorting
 int[] arr = {3, 1, 4, 1, 5};
-Arrays.
-
-sort(arr);  // Dual-pivot quicksort, O(n log n)
-Arrays.
-
-sort(arr, 0,3);  // Sort subrange
+Arrays.sort(arr);  // Dual-pivot quicksort, O(n log n)
+Arrays.sort(arr, 0,3);  // Sort subrange
 
 // Binary search - array MUST be sorted first
 int index = Arrays.binarySearch(arr, 4);  // Returns index or (-insertionPoint - 1)
 
 // Filling
-Arrays.
-
-fill(arr, 0);  // Fill with value
-Arrays.
-
-fill(arr, 1,3,-1);  // Fill subrange
+Arrays.fill(arr, 0);  // Fill with value
+Arrays.fill(arr, 1,3,-1);  // Fill subrange
 
 // Copying
 int[] copy = Arrays.copyOf(arr, arr.length);
@@ -350,13 +377,9 @@ double pow = Math.pow(2, 10);  // 1024.0
 
 // BigInteger - arbitrary precision integers
 BigInteger fact = BigInteger.ONE;
-for(
-int i = 2;
-i <=100;i++){
-fact =fact.
-
-multiply(BigInteger.valueOf(i));
-        }
+for(int i = 2; i <=100; i++){
+    fact = fact.multiply(BigInteger.valueOf(i));
+}
 
 // BigDecimal - arbitrary precision decimals
 // Example from PlusMinus.java
@@ -400,11 +423,7 @@ PriorityQueue<int[]> pq = new PriorityQueue<>(
 
 // Sorting with comparator
 List<Person> people = new ArrayList<>();
-people.
-
-sort(Comparator.comparingInt(Person::getAge).
-
-reversed());
+people.sort(Comparator.comparingInt(Person::getAge).reversed());
 ```
 
 ### Var Keyword (Java 10+)
@@ -939,112 +958,57 @@ List<Integer> list = new ArrayList<>();
 Set<String> set = new HashSet<>();
 Map<String, Integer> map = new HashMap<>();
 Queue<Integer> queue = new ArrayDeque<>();
-Deque<Integer> stack = new ArrayDeque<>();  // Use as stack: push/pop
+Deque<Integer> stack = new ArrayDeque<>(); // Use as stack: push/pop
 PriorityQueue<Integer> minHeap = new PriorityQueue<>();
 PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Collections.reverseOrder());
 
 // Array operations
-Arrays.
-
-sort(arr);
-Arrays.
-
-binarySearch(arr, key);  // Array must be sorted
-Arrays.
-
-fill(arr, value);
-
+Arrays.sort(arr);
+Arrays.binarySearch(arr, key); // Array must be sorted
+Arrays.fill(arr, value);
 int[] copy = Arrays.copyOf(arr, arr.length);
 
 // String operations
 StringBuilder sb = new StringBuilder();
-sb.
-
-append("text");
-
+sb.append("text");
 String result = sb.toString();
 
 // Math
-Math.
-
-max(a, b);
-Math.
-
-min(a, b);
-Math.
-
-abs(x);
-
+Math.max(a, b);
+Math.min(a, b);
+Math.abs(x);
 int max = Arrays.stream(arr).max().getAsInt();
 
 // Map operations
-map.
-
-put(key, value);
-map.
-
-getOrDefault(key, defaultValue);
-map.
-
-containsKey(key);
-map.
-
-merge(key, 1,Integer::sum);  // Increment counter
+map.put(key, value);
+map.getOrDefault(key, defaultValue);
+map.containsKey(key);
+map.merge(key, 1, Integer::sum); // Increment counter
 
 // Set operations
-set.
-
-add(element);
-set.
-
-contains(element);
+set.add(element);
+set.contains(element);
 
 // Queue operations
-queue.
-
-offer(element);  // Add
-queue.
-
-poll();          // Remove and return head
-queue.
-
-peek();          // View head without removing
+queue.offer(element); // Add
+queue.poll(); // Remove and return head
+queue.peek(); // View head without removing
 
 // Stack operations (using Deque)
-deque.
-
-push(element);   // Add to top
-deque.
-
-pop();           // Remove from top
-deque.
-
-peek();          // View top
+deque.push(element); // Add to top
+deque.pop(); // Remove from top
+deque.peek(); // View top
 
 // PriorityQueue operations
-pq.
-
-offer(element);
-pq.
-
-poll();             // Remove min (or max for reverseOrder)
-pq.
-
-peek();             // View min/max
+pq.offer(element);
+pq.poll(); // Remove min (or max for reverseOrder)
+pq.peek(); // View min/max
 
 // Iteration patterns
-for(
-int i = 0;
-i<arr.length;i++){}
-        for(
-int num :arr){}
-        for(
-Map.Entry<K, V> entry :map.
-
-entrySet()){}
-        while(!queue.
-
-isEmpty()){}
+for (int i = 0; i < arr.length; i++) {}
+for (int num : arr) {}
+for (Map.Entry<K, V> entry : map.entrySet()) {}
+while (!queue.isEmpty()) {}
 ```
 
 ---

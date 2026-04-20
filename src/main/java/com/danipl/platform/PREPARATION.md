@@ -1,10 +1,33 @@
 # Java Platform Engineering Interview Preparation Guide
 
-A comprehensive guide for senior platform engineering interviews at top-tier companies: Revolut, Deel, RevenueCat,
-GitHub, Docker, Datadog.
+> Master index for platform engineering topics. See deep-dive guides below.
 
-This guide covers concurrency patterns, resilience mechanisms, system design, and distributed systems concepts essential
-for platform roles.
+## Quick Reference — Data Structures for Platform Engineering
+
+### Collections
+
+- [Queue/Deque Guide](../QUEUE_GUIDE.md) — ArrayDeque, PriorityQueue, all BlockingQueue types, DelayQueue
+- [Map Guide](../MAP_GUIDE.md) — HashMap, LinkedHashMap, TreeMap, ConcurrentHashMap
+- [Heap Guide](../HEAP_GUIDE.md) — PriorityBlockingQueue patterns, Top-K scheduling
+- [Graph Guide](../GRAPH_GUIDE.md) — BFS/DFS, Union-Find for dependency resolution
+- [Tree Guide](../TREE_GUIDE.md) — Trie, BST for config hierarchy (challenge09)
+- [Interval Guide](../INTERVAL_GUIDE.md) — Merge intervals for sliding windows
+- [Monotonic Guide](../MONOTONIC_GUIDE.md) — Sliding window max/min for metrics
+
+### Challenge → Guide Mapping
+
+| Challenge                       | Primary Guide                                              | Secondary Guide                                    |
+|---------------------------------|------------------------------------------------------------|----------------------------------------------------|
+| challenge01 Circuit Breaker     | (ReentrantLock - concurrency, below)                       | [MAP_GUIDE.md](../MAP_GUIDE.md) config state       |
+| challenge02 Load Balancer       | (Distribution algorithms, below)                           | [QUEUE_GUIDE.md](../QUEUE_GUIDE.md) server queue   |
+| challenge03 Dependency Resolver | [GRAPH_GUIDE.md](../GRAPH_GUIDE.md) topological sort       | [QUEUE_GUIDE.md](../QUEUE_GUIDE.md) ArrayDeque BFS |
+| challenge04 Rate Limiter        | [INTERVAL_GUIDE.md](../INTERVAL_GUIDE.md) sliding windows  | [QUEUE_GUIDE.md](../QUEUE_GUIDE.md) token bucket   |
+| challenge05 Metrics Aggregator  | [MONOTONIC_GUIDE.md](../MONOTONIC_GUIDE.md) sliding window | [HEAP_GUIDE.md](../HEAP_GUIDE.md) percentile calc  |
+| challenge06 Retry               | (Exponential backoff - concurrency, below)                 | [MAP_GUIDE.md](../MAP_GUIDE.md) retry state        |
+| challenge07 LRU Cache           | [MAP_GUIDE.md](../MAP_GUIDE.md) LinkedHashMap              | [QUEUE_GUIDE.md](../QUEUE_GUIDE.md) LRU eviction   |
+| challenge08 Resource Pool       | [QUEUE_GUIDE.md](../QUEUE_GUIDE.md) BlockingQueue          | [MAP_GUIDE.md](../MAP_GUIDE.md) resource registry  |
+| challenge09 Config Merger       | [TREE_GUIDE.md](../TREE_GUIDE.md) tree structures          | [MAP_GUIDE.md](../MAP_GUIDE.md) config maps        |
+| challenge10 Task Scheduler      | [QUEUE_GUIDE.md](../QUEUE_GUIDE.md) DelayQueue             | [HEAP_GUIDE.md](../HEAP_GUIDE.md) PriorityQueue    |
 
 ---
 
@@ -65,6 +88,8 @@ difference between a senior and mid-level answer.
 
 ```java
 // Fixed thread pool - bounded concurrency, predictable resource usage
+// Note: Uses LinkedBlockingQueue internally. For full BlockingQueue implementation guide, see:
+// [Queue/Deque Guide](../QUEUE_GUIDE.md)
 ExecutorService fixedPool = Executors.newFixedThreadPool(4);
 
 // Cached thread pool - unbounded growth, reuses idle threads
@@ -72,14 +97,17 @@ ExecutorService cachedPool = Executors.newCachedThreadPool();
 
 // Scheduled executor - delayed and periodic execution
 ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
-scheduler.schedule(task, 5, TimeUnit.SECONDS);
-scheduler.scheduleAtFixedRate(task, 0, 1, TimeUnit.SECONDS);
+scheduler.schedule(task, 5,TimeUnit.SECONDS);
+scheduler.scheduleAtFixedRate(task, 0,1,TimeUnit.SECONDS);
 
 // Work stealing pool (Java 8+) - ForkJoinPool for compute-intensive tasks
 ExecutorService workStealing = Executors.newWorkStealingPool();
 
 // Single thread executor - guaranteed sequential execution
 ExecutorService singleThread = Executors.newSingleThreadExecutor();
+
+// For queue type details (LinkedBlockingQueue, ArrayBlockingQueue, etc.), see:
+// [Queue/Deque Guide](../QUEUE_GUIDE.md) — BlockingQueue implementations and selection matrix
 
 // Custom thread factory for named threads
 ThreadFactory namedFactory = r -> {
@@ -97,6 +125,7 @@ ExecutorService customPool = Executors.newFixedThreadPool(4, namedFactory);
 
 - Backed by `ThreadPoolExecutor` with `corePoolSize = nThreads`, `maximumPoolSize = nThreads`
 - Uses an unbounded `LinkedBlockingQueue`
+- For full BlockingQueue implementation details and selection matrix, see [Queue/Deque Guide](../QUEUE_GUIDE.md)
 - Keeps all threads alive regardless of idle time (`keepAliveTime = 0`)
 
 **When to use:**
@@ -168,8 +197,10 @@ built-in policies:
   violate ordering guarantees.
 
    ```java
-   new ThreadPoolExecutor.DiscardOldestPolicy()
-   ```
+    new ThreadPoolExecutor.DiscardOldestPolicy()
+    ```
+
+> **For detailed BlockingQueue implementation and selection matrix, see [Queue/Deque Guide](../QUEUE_GUIDE.md)**
 
 **Custom Rejection Handler:**
 You can implement your own policy by implementing `RejectedExecutionHandler`:
@@ -181,6 +212,7 @@ You can implement your own policy by implementing `RejectedExecutionHandler`:
 - `ThreadPoolExecutor` with `corePoolSize = 0`, `maximumPoolSize = Integer.MAX_VALUE`
 - Uses `SynchronousQueue` (handoff queue — no real capacity)
 - `keepAliveTime = 60 seconds` — idle threads are terminated
+- For SynchronousQueue usage pattern, see [Queue/Deque Guide](../QUEUE_GUIDE.md)
 
 **When to use:**
 
@@ -193,6 +225,7 @@ You can implement your own policy by implementing `RejectedExecutionHandler`:
 - **Can create unlimited threads** — under sustained load, this will exhaust memory and crash the JVM. Each OS thread
   costs ~1MB of stack space.
 - The `SynchronousQueue` means if all threads are busy, a **new** thread is created immediately — there is no queueing.
+  For SynchronousQueue details, see [Queue/Deque Guide](../QUEUE_GUIDE.md).
 - Not suitable for I/O-heavy workloads where threads block.
 
 **Production reality:** Almost never recommended. `newFixedThreadPool` or custom `ThreadPoolExecutor` with bounded
@@ -204,6 +237,7 @@ resources is safer.
 
 - `ThreadPoolExecutor` with `corePoolSize = 1`, `maximumPoolSize = 1`
 - Uses an unbounded `LinkedBlockingQueue`
+- For BlockingQueue implementation details, see [Queue/Deque Guide](../QUEUE_GUIDE.md)
 - Guarantees sequential task execution — no two tasks run concurrently
 
 **When to use:**
@@ -227,13 +261,15 @@ resources is safer.
 
 - Extends `ThreadPoolExecutor` but uses `DelayedWorkQueue` internally (a `PriorityQueue` by delay time)
 - Core threads are kept alive (`allowCoreThreadTimeOut = false`)
+- For DelayQueue and PriorityQueue patterns, see [Queue/Deque Guide](../QUEUE_GUIDE.md)
+  and [Heap Guide](../HEAP_GUIDE.md)
 - No max pool limit but scheduled tasks are bounded by scheduling behavior
 
 **Scheduling methods:**
 
 ```java
 // One-shot: executes once after the delay
-scheduler.schedule(task, 5, TimeUnit.SECONDS);
+scheduler.schedule(task, 5,TimeUnit.SECONDS);
 
 // Fixed rate: executes at fixed intervals (start-to-start)
 scheduler.scheduleAtFixedRate(task, initialDelay, period, unit);
@@ -316,7 +352,7 @@ rewriting needed.
 ```java
 // Method 1: Builder API (one-off)
 Thread.startVirtualThread(() -> {
-    System.out.println("Running in " + Thread.currentThread());
+    System.out.println("Running in "+Thread.currentThread());
 });
 
 // Method 2: Thread factory (preferred for repeated use)
@@ -325,17 +361,17 @@ Thread vt = factory.newThread(task);
 vt.start();
 
 // Method 3: ExecutorService (structured concurrency)
-try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+try(var executor = Executors.newVirtualThreadPerTaskExecutor()){
     List<Future<String>> futures = new ArrayList<>();
-    for (int i = 0; i < 100_000; i++) {
+    for(int i = 0; i< 100_000;i++){
         final int id = i;
-        futures.add(executor.submit(() -> {
-            Thread.sleep(100);  // Blocks virtually — zero OS thread cost
-            return "Task " + id + " done";
+        futures.add(executor.submit(() ->{
+        Thread.sleep(100);  // Blocks virtually — zero OS thread cost
+            return"Task "+id +" done";
         }));
     }
     // All 100,000 execute concurrently
-    for (var f : futures) {
+    for(var f : futures){
         System.out.println(f.get());
     }
 }
@@ -365,6 +401,9 @@ points.
 | CPU-intensive (math, parsing, hash)           | Fine (threads stay busy)      | **Avoid** — pins carrier thread            |
 | Low concurrency (<100 threads)                | Fine, no benefit needed       | Unnecessary overhead                       |
 
+> **For virtual thread usages and patterns, see [Queue/Deque Guide](../QUEUE_GUIDE.md) for producer-consumer with
+virtual threads**
+
 **Key insight:** Virtual threads are the answer to: *"My application spends most of its time waiting — how do I handle
 100k simultaneous requests?"*
 
@@ -378,7 +417,7 @@ throughput with **synchronous blocking code** — the mental model is preserved.
 ```java
 // BAD: Virtual threads don't help with CPU work
 // This pins the carrier thread — same throughput as platform threads
-for (int i = 0; i < 10_000; i++) {
+for(int i = 0; i< 10_000;i++){
     executor.submit(() -> expensiveHashCalculation(data));
 }
 ```
@@ -390,7 +429,7 @@ Carriers are OS threads. If all are busy computing, adding more virtual threads 
 
 ```java
 // BAD: synchronized keyword pins the carrier thread
-public synchronized void doWork() { ... }
+public synchronized void doWork() { ...}
 ```
 
 The JVM cannot unmount a virtual thread inside a `synchronized` block because the monitor is held on the carrier thread
@@ -399,9 +438,12 @@ itself. The carrier is **pinned** — it cannot be reused. Use `ReentrantLock` i
 ```java
 // GOOD: ReentrantLock is virtual-thread-friendly
 private final ReentrantLock lock = new ReentrantLock();
+
 public void doWork() {
     lock.lock();
-    try { ... } finally { lock.unlock(); }
+    try { ...} finally {
+        lock.unlock();
+    }
 }
 ```
 
@@ -433,15 +475,14 @@ var f2 = executor.submit(() -> fetchOrders());
 // What if f1 throws? f2 still runs. How do you cancel it?
 
 // WITH structured concurrency:
-try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
+try(var scope = new StructuredTaskScope.ShutdownOnFailure()){
     Subtask<String> user = scope.fork(() -> fetchUser());
     Subtask<List<Order>> orders = scope.fork(() -> fetchOrders());
 
-    scope.join()            // Wait for all
-         .throwIfFailed();  // Propagate first failure (cancels others)
+    scope.join().throwIfFailed();  // Propagate first failure (cancels others)
 
     // Both succeeded
-    process(user.get(), orders.get());
+    process(user.get(),orders.get());
 }  // Exit block → all remaining forked tasks are automatically cancelled
 ```
 
@@ -505,9 +546,9 @@ CompletableFuture<String> configFuture = CompletableFuture.supplyAsync(this::fet
 
 CompletableFuture<Void> both = CompletableFuture.allOf(userFuture, configFuture);
 both.thenRun(() ->{
-// Both completed
-String user = userFuture.join();
-String config = configFuture.join();
+    // Both completed
+    String user = userFuture.join();
+    String config = configFuture.join();
 });
 
 // AnyOf - proceed when first completes
@@ -624,12 +665,12 @@ public boolean transition(int expected, int newState) {
 
 // AtomicLong - for metrics, timestamps
 AtomicLong lastFailureTime = new AtomicLong(0);
-lastFailureTime.updateAndGet(current -> current >System.currentTimeMillis() ?current :System.currentTimeMillis());
+lastFailureTime.updateAndGet(current -> current > System.currentTimeMillis() ? current : System.currentTimeMillis());
 
 // AtomicReference - for object updates
 AtomicReference<Connection> connectionRef = new AtomicReference<>();
 Connection old = connectionRef.getAndSet(newConnection);
-if(old !=null){
+if(old != null){
     old.close(); // Cleanup old connection
 }
 
@@ -695,15 +736,18 @@ Map<String, String> syncMap = Collections.synchronizedMap(new HashMap<>());
 // ConcurrentHashMap - fine-grained locking (segment-based)
 ConcurrentHashMap<String, String> concurrentMap = new ConcurrentHashMap<>();
 
+// For full ConcurrentHashMap details, see [Map Guide](../MAP_GUIDE.md)
+// — including compute patterns, atomic operations, and performance comparison
+
 // ConcurrentHashMap specific operations
 concurrentMap.putIfAbsent("key","value");
 concurrentMap.computeIfAbsent("key",k -> expensiveCompute(k));
-concurrentMap.merge("key","value", String::concat);
+concurrentMap.merge("key","value",String::concat);
 
 // Atomic compound operations
-concurrentMap.compute("counter",(k, v) -> {
-        if(v ==null) return"1";
-        return String.valueOf(Integer.parseInt(v) +1);
+concurrentMap.compute("counter",(k, v) ->{
+    if(v ==null) return"1";
+    return String.valueOf(Integer.parseInt(v) +1);
 });
 ```
 
@@ -753,10 +797,14 @@ BlockingQueue<String> unbounded = new LinkedBlockingQueue<>(); // DANGER in prod
 > **Production rule: bounded queues are almost always preferred.** An unbounded queue is like an infinite to-do list —
 > it looks great because you never say "no" to a task, but eventually your desk (RAM) is buried. Bounded queues build a
 > fail-fast system that protects your application's memory.
+>
+> > **For full BlockingQueue implementation details and selection matrix, see [Queue/Deque Guide](../QUEUE_GUIDE.md)**
 
 > **Note on `LinkedBlockingQueue`:** It is a hybrid. Make it bounded by providing a capacity:
 `new LinkedBlockingQueue<>(100)`. Often preferred over `ArrayBlockingQueue` in high-contention scenarios because it uses
 > a "two-lock queue" algorithm with separate locks for head and tail, offering better concurrency.
+>
+> > **For detailed BlockingQueue implementation guide, see [Queue/Deque Guide](../QUEUE_GUIDE.md)**
 
 #### BlockingQueue Implementations
 
@@ -774,6 +822,7 @@ BlockingQueue<String> unbounded = new LinkedBlockingQueue<>(); // DANGER in prod
 ```java
 // Producer
 queue.put(task);              // Blocks if full
+
 boolean offered = queue.offer(task, 5, TimeUnit.SECONDS); // Timeout
 
 // Consumer
@@ -816,7 +865,9 @@ public class ResourcePool<T extends AutoCloseable> {
 // CountDownLatch - one-shot barrier
 CountDownLatch latch = new CountDownLatch(3);
 // Each worker calls: latch.countDown();
-latch.await(); // Main thread waits for all 3
+latch.
+
+await(); // Main thread waits for all 3
 
 // CyclicBarrier - reusable barrier
 CyclicBarrier barrier = new CyclicBarrier(4);
@@ -829,6 +880,7 @@ semaphore.acquire();   // Decrement, block if 0
 semaphore.release();   // Increment
 
 // Rate limiter using Semaphore
+// For custom rate limiter implementations, see [Interval Guide](../INTERVAL_GUIDE.md) and challenge04
 public class SemaphoreRateLimiter {
     private final Semaphore semaphore;
 
@@ -918,12 +970,17 @@ public class ScheduledTask implements Delayed {
 
 // Usage
 DelayQueue<ScheduledTask> queue = new DelayQueue<>();
-queue.put(new ScheduledTask(() ->System.out.println("Hello"), 5000));
+queue.put(new ScheduledTask(() ->System.out.
+
+println("Hello"), 5000));
 
 // Consumer thread
 ScheduledTask task = queue.take(); // Blocks until delay expired
 task.execute();
 ```
+
+> **For DelayQueue pattern details, see [Queue/Deque Guide](../QUEUE_GUIDE.md)** and **[Heap Guide](../HEAP_GUIDE.md)**
+> for PriorityBlockingQueue patterns
 
 ### PriorityQueue: Min-Heap for Scheduling
 
@@ -958,16 +1015,17 @@ PriorityTask next = pq.poll(); // task1 (priority 1, older)
 ConcurrentHashMap<String, AtomicInteger> counters = new ConcurrentHashMap<>();
 
 // Option 1: Using atomic operations on value
-counters.computeIfAbsent("key", k -> new AtomicInteger(0)).incrementAndGet();
+counters.computeIfAbsent("key",k -> new AtomicInteger(0)).incrementAndGet();
 
 // Option 2: Using ConcurrentHashMap's compute
-counters.compute("key", (k, v) -> {
-    if(v == null) return new AtomicInteger(1);
+counters.compute("key",(k, v) -> {
+    if(v ==null)return new AtomicInteger(1);
     v.incrementAndGet();
     return v;
 });
 
 // ConcurrentHashMap.newKeySet() - concurrent Set
+// For full ConcurrentHashMap details, see [Map Guide](../MAP_GUIDE.md)
 Set<String> concurrentSet = ConcurrentHashMap.newKeySet();
 ```
 
@@ -992,6 +1050,8 @@ public class ConfigNotifier {
 ```
 
 ### ConcurrentLinkedQueue: Non-Blocking Queue
+
+> **For non-blocking queue usage patterns, see [Queue/Deque Guide](../QUEUE_GUIDE.md)**
 
 ```java
 // High-throughput, low-latency scenarios
@@ -1286,6 +1346,8 @@ public class ConsistentHashBalancer implements LoadBalancer {
 }
 ```
 
+> **For TreeMap usage in consistent hashing (ceilingEntry), see [Tree Guide](../TREE_GUIDE.md)**
+
 **Consistent hashing benefits:**
 
 - When servers added/removed, only 1/N keys need to remap (N = server count).
@@ -1371,13 +1433,16 @@ public void doWork() throws Exception {
 
 ## D. Time & Scheduling
 
+> **For scheduler patterns and DelayQueue details, see [Queue/Deque Guide](../QUEUE_GUIDE.md)** and *
+*[Heap Guide](../HEAP_GUIDE.md)**
+
 ### ScheduledExecutorService Patterns
 
 ```java
 ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
 
 // One-shot delay
-scheduler.schedule(() -> System.out.println("Delayed"), 5, TimeUnit.SECONDS);
+scheduler.schedule(() ->System.out.println("Delayed"), 5,TimeUnit.SECONDS);
 
 // Fixed rate - executes at consistent intervals (may overlap)
 scheduler.scheduleAtFixedRate(() -> heartbeat(), 0, 30, TimeUnit.SECONDS);
@@ -1400,6 +1465,9 @@ public void shutdownGracefully() {
 ```
 
 ### DelayQueue Implementation (challenge10)
+
+> **For DelayQueue pattern details, see [Queue/Deque Guide](../QUEUE_GUIDE.md)** and **[Heap Guide](../HEAP_GUIDE.md)**
+> for PriorityBlockingQueue patterns
 
 ```java
 public class TaskScheduler {
@@ -1497,6 +1565,8 @@ public void testExpiration() {
 ## E. Metrics & Observability
 
 ### Sliding Window Algorithms (challenge05)
+
+> **For interval merge and sliding window patterns, see [Interval Guide](../INTERVAL_GUIDE.md)**
 
 ```java
 public class SlidingWindowMetrics {
@@ -1666,6 +1736,8 @@ public class DistributedLock {
 
 ### Backpressure Patterns
 
+> **For BlockingQueue patterns and implementation details, see [Queue/Deque Guide](../QUEUE_GUIDE.md)**
+
 ```java
 public class BoundedProcessor {
     private final BlockingQueue<Task> queue;
@@ -1766,10 +1838,10 @@ public class GracefulService {
 ```java
 // Circuit breaker configuration
 public record CircuitBreakerConfig(
-        int failureThreshold,
-        long timeoutDurationMs,
-        int halfOpenMaxCalls
-) {
+                int failureThreshold,
+                long timeoutDurationMs,
+                int halfOpenMaxCalls
+        ) {
     // Compact constructor for validation
     public CircuitBreakerConfig {
         if (failureThreshold <= 0) {
@@ -1870,35 +1942,46 @@ public void handleException(Throwable t) {
 
 ## Challenge Implementation Notes
 
-### challenge01: CircuitBreaker
+###challenge01: CircuitBreaker
 
 - Use `ReentrantLock` for state transitions.
 - Use `volatile` for counters accessed without lock.
 - State machine: CLOSED → OPEN → HALF_OPEN → CLOSED.
+- For configuration state management, see [Map Guide](../MAP_GUIDE.md)
 
 ### challenge04: RateLimiter
 
 - Token bucket: track `tokens` and `lastRefillTime`.
 - Calculate tokens to add: `elapsed * refillRate`.
 - Support `tryAcquire(int tokens, long timeout, TimeUnit)`.
+- For sliding window patterns, see [Interval Guide](../INTERVAL_GUIDE.md)
 
 ### challenge05: MetricsAggregator
 
 - Sliding window: `Queue<LogEntry>` with eviction.
 - P95: Sort response times, pick index at 95%.
 - Error rate: Count ERROR + FATAL / total.
+- For sliding window algorithms, see [Interval Guide](../INTERVAL_GUIDE.md)
+- For heap percentile calculation, see [Heap Guide](../HEAP_GUIDE.md)
 
 ### challenge07: LruCache
 
 - Doubly-linked list + HashMap (NOT LinkedHashMap).
 - Node: `K key, V value, Node prev, Node next`.
 - Move to head on access, evict from tail.
+- For LinkedHashMap usage patterns, see [Map Guide](../MAP_GUIDE.md)
 
 ### challenge08: ResourcePool
 
 - BlockingQueue for available resources.
 - Health check on acquire.
 - `AutoCloseable` for cleanup.
+- For BlockingQueue implementation patterns, see [Queue/Deque Guide](../QUEUE_GUIDE.md)
+
+### challenge09: ConfigMerger
+
+- Tree structures for hierarchical configuration.
+- For tree traversal and merging patterns, see [Tree Guide](../TREE_GUIDE.md)
 
 ### challenge10: TaskScheduler
 
@@ -1906,6 +1989,9 @@ public void handleException(Throwable t) {
 - Fixed thread pool for execution.
 - `Future` for result tracking.
 - Graceful shutdown: drain queue, await termination.
+- For DelayQueue and PriorityBlockingQueue patterns, see [Queue/Deque Guide](../QUEUE_GUIDE.md)
+  and [Heap Guide](../HEAP_GUIDE.md)
+- For task scheduling patterns, see [CP_IO Guide](../CP_IO_GUIDE.md) for I/O scheduling considerations
 
 ---
 
@@ -1964,12 +2050,11 @@ public void shutdown() {
 ### CompletableFuture Pipeline
 
 ```java
-CompletableFuture
-        .supplyAsync(this::fetch)
-        .thenApply(this::transform)
-        .thenCompose(this::asyncEnrich)
-        .orTimeout(5, TimeUnit.SECONDS)
-        .exceptionally(this::handleError);
+CompletableFuture.supplyAsync(this::fetch)
+  .thenApply(this::transform)
+  .thenCompose(this::asyncEnrich)
+  .orTimeout(5,TimeUnit.SECONDS)
+  .exceptionally(this::handleError);
 ```
 
 ---
