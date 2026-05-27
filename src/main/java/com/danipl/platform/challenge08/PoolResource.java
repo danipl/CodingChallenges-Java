@@ -3,7 +3,7 @@ package com.danipl.platform.challenge08;
 /**
  * A simple pooled resource with health tracking.
  */
-public final class PoolResource implements AutoCloseable {
+public final class PoolResource implements AutoCloseable, ResourcePool.Healthy {
 
     public record ResourceId(int id) { }
 

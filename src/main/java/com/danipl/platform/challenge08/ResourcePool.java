@@ -4,14 +4,18 @@ import java.util.function.Function;
 
 /**
  * A thread-safe connection/resource pool.
- *
+ * <p>
  * Blocks the caller up to acquireTimeoutMs if no resource is available.
  * If the timeout expires, a PoolExhaustedException is thrown.
  * Invalid resources (marked via markInvalid()) are discarded and not returned to the pool.
  *
  * @param <T> the type of pooled resource
  */
-public interface ResourcePool<T extends AutoCloseable> {
+public interface ResourcePool<T extends AutoCloseable & ResourcePool.Healthy> {
+
+    interface Healthy {
+        boolean isHealthy();
+    }
 
     /**
      * Acquires a resource from the pool.
@@ -58,7 +62,7 @@ public interface ResourcePool<T extends AutoCloseable> {
      * @param <T>              the type of pooled resource
      * @return a new ResourcePool instance
      */
-    static <T extends AutoCloseable> ResourcePool<T> of(int maxSize, Function<Integer, T> resourceFactory, long acquireTimeoutMs) {
+    static <T extends AutoCloseable & ResourcePool.Healthy> ResourcePool<T> of(int maxSize, Function<Integer, T> resourceFactory, long acquireTimeoutMs) {
         return new ResourcePoolImpl<>(maxSize, resourceFactory, acquireTimeoutMs);
     }
 }
