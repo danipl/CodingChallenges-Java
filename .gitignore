@@ -2,3 +2,6 @@ bin/
 build/
 .idea/
 .gradle/
+.classpath
+.project
+org.eclipse.*

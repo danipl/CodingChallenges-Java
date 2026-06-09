@@ -823,7 +823,7 @@ SequencedSet<String> reversed = ss.reversed();  // Reverse-order view
   deep Set knowledge.
 - **[QUEUE_GUIDE.md](QUEUE_GUIDE.md)**: For priority-based unique collections, compare `PriorityQueue` (allows
   duplicates) vs `TreeSet` (unique, sorted).
-- **[development/PREPARATION.md](development/PREPARATION.md)**: Java Collections decision tree includes Set selection
+- **[development/PREPARATION.md](algo/PREPARATION.md)**: Java Collections decision tree includes Set selection
   guidance.
 
 ---
