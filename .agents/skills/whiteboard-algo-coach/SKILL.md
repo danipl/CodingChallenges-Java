@@ -69,7 +69,7 @@ Tests are placed under `src/test/java/com/danipl/algo/<topic>/<difficulty>/<Chal
 **File naming:** `<PascalCaseProblemName>.java` (e.g., `TwoSum.java`, `ProductExceptSelf.java`).
 **Test naming:** `<PascalCaseProblemName>Test.java` (e.g., `TwoSumTest.java`).
 
-**Package naming:** `com.danipl.algo.<topic>` (difficulty is NOT part of the package).
+**Package naming:** `com.danipl.algo.<topic>.<difficulty>` (difficulty IS part of the package, matching Java's directory structure requirement).
 
 ## Algorithm Pattern Registry
 
@@ -233,7 +233,7 @@ Before creating the challenge, determine if it introduces an **algorithm or patt
 
 The source file contains:
 
-1. **Package declaration**: `package com.danipl.algo.<topic>;`
+1. **Package declaration**: `package com.danipl.algo.<topic>.<difficulty>;`
 2. **Imports**: Standard Java imports (`java.util.*`, `java.util.concurrent.*` as needed).
 3. **Class-level Javadoc Cheat Sheet**: At the top of the `Solution` class Javadoc, include a section titled `JAVA INTERVIEW CHEAT-SHEET`. Provide 3-5 Java-specific features (classes, methods, or patterns) highly relevant to the current topic. Briefly explain why they are useful.
 4. **Helper Classes/Records**: If the topic requires data structures (e.g., `TreeNode`, `ListNode`), define them as `static` inner classes or separate top-level classes before the `Solution` class.
@@ -250,7 +250,7 @@ The test file uses **JUnit 5** (`org.junit.jupiter.api.*`):
 ### Required Reference Structure — Source File
 
 ```java
-package com.danipl.algo.<topic>;
+package com.danipl.algo.<topic>.<difficulty>;
 
 import java.util.*;
 
@@ -288,7 +288,7 @@ public class <ChallengeName> {
 ### Required Reference Structure — Test File
 
 ```java
-package com.danipl.algo.<topic>;
+package com.danipl.algo.<topic>.<difficulty>;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -420,7 +420,7 @@ public class Solution {
 - If space is dominated by both auxiliary structures AND the return value, mention both (e.g., `// Space O(N) for result + O(W) for queue`).
 
 3. **Write the updated file** with the Big O comments injected.
-4. **Run the tests** to confirm the solution still passes after comment injection: `./gradlew test --tests "com.danipl.algo.<topic>.<ChallengeName>Test"`
+4. **Run the tests** to confirm the solution still passes after comment injection: `./gradlew test --tests "com.danipl.algo.<topic>.<difficulty>.<ChallengeName>Test"`
 5. **Announce completion** with a summary: grade, final complexity, and any whiteboard tips.
 
 ## Grading Rubric
@@ -452,7 +452,7 @@ public class Solution {
 ## Build & Test Commands
 
 - **Run all tests**: `./gradlew test`
-- **Run specific test**: `./gradlew test --tests "com.danipl.algo.<topic>.<ChallengeName>Test"`
+- **Run specific test**: `./gradlew test --tests "com.danipl.algo.<topic>.<difficulty>.<ChallengeName>Test"`
 - **Run tests for a difficulty**: `./gradlew test --tests "com.danipl.algo.*.easy.*"`
 - **Clean and rebuild**: `./gradlew clean build`
 - **Compile only**: `./gradlew compileJava`
