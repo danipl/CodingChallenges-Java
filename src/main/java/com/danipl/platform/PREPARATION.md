@@ -18,16 +18,16 @@
 
 | Challenge                       | Primary Guide                                              | Secondary Guide                                    |
 |---------------------------------|------------------------------------------------------------|----------------------------------------------------|
-| challenge01 Circuit Breaker     | (ReentrantLock - concurrency, below)                       | [MAP_GUIDE.md](../MAP_GUIDE.md) config state       |
-| challenge02 Load Balancer       | (Distribution algorithms, below)                           | [QUEUE_GUIDE.md](../QUEUE_GUIDE.md) server queue   |
-| challenge03 Dependency Resolver | [GRAPH_GUIDE.md](../GRAPH_GUIDE.md) topological sort       | [QUEUE_GUIDE.md](../QUEUE_GUIDE.md) ArrayDeque BFS |
-| challenge04 Rate Limiter        | [INTERVAL_GUIDE.md](../INTERVAL_GUIDE.md) sliding windows  | [QUEUE_GUIDE.md](../QUEUE_GUIDE.md) token bucket   |
-| challenge05 Metrics Aggregator  | [MONOTONIC_GUIDE.md](../MONOTONIC_GUIDE.md) sliding window | [HEAP_GUIDE.md](../HEAP_GUIDE.md) percentile calc  |
-| challenge06 Retry               | (Exponential backoff - concurrency, below)                 | [MAP_GUIDE.md](../MAP_GUIDE.md) retry state        |
-| challenge07 LRU Cache           | [MAP_GUIDE.md](../MAP_GUIDE.md) LinkedHashMap              | [QUEUE_GUIDE.md](../QUEUE_GUIDE.md) LRU eviction   |
-| challenge08 Resource Pool       | [QUEUE_GUIDE.md](../QUEUE_GUIDE.md) BlockingQueue          | [MAP_GUIDE.md](../MAP_GUIDE.md) resource registry  |
-| challenge09 Config Merger       | [TREE_GUIDE.md](../TREE_GUIDE.md) tree structures          | [MAP_GUIDE.md](../MAP_GUIDE.md) config maps        |
-| challenge10 Task Scheduler      | [QUEUE_GUIDE.md](../QUEUE_GUIDE.md) DelayQueue             | [HEAP_GUIDE.md](../HEAP_GUIDE.md) PriorityQueue    |
+| resilience/circuitbreaker   Circuit Breaker     | (ReentrantLock - concurrency, below)                       | [MAP_GUIDE.md](../MAP_GUIDE.md) config state       |
+| resilience/ratelimiter      Rate Limiter        | [INTERVAL_GUIDE.md](../INTERVAL_GUIDE.md) sliding windows  | [QUEUE_GUIDE.md](../QUEUE_GUIDE.md) token bucket   |
+| resilience/retry            Retry               | (Exponential backoff - concurrency, below)                 | [MAP_GUIDE.md](../MAP_GUIDE.md) retry state        |
+| concurrency/resourcepool    Resource Pool       | [QUEUE_GUIDE.md](../QUEUE_GUIDE.md) BlockingQueue          | [MAP_GUIDE.md](../MAP_GUIDE.md) resource registry  |
+| concurrency/taskscheduler   Task Scheduler      | [QUEUE_GUIDE.md](../QUEUE_GUIDE.md) DelayQueue             | [HEAP_GUIDE.md](../HEAP_GUIDE.md) PriorityQueue    |
+| datastructures/loadbalancer Load Balancer       | (Distribution algorithms, below)                           | [QUEUE_GUIDE.md](../QUEUE_GUIDE.md) server queue   |
+| datastructures/dependencyresolver Dependency Resolver | [GRAPH_GUIDE.md](../GRAPH_GUIDE.md) topological sort | [QUEUE_GUIDE.md](../QUEUE_GUIDE.md) ArrayDeque BFS |
+| datastructures/lrucache     LRU Cache           | [MAP_GUIDE.md](../MAP_GUIDE.md) LinkedHashMap              | [QUEUE_GUIDE.md](../QUEUE_GUIDE.md) LRU eviction   |
+| datastructures/configmerger Config Merger       | [TREE_GUIDE.md](../TREE_GUIDE.md) tree structures          | [MAP_GUIDE.md](../MAP_GUIDE.md) config maps        |
+| observability/metricsaggregator Metrics Aggregator | [MONOTONIC_GUIDE.md](../MONOTONIC_GUIDE.md) sliding window | [HEAP_GUIDE.md](../HEAP_GUIDE.md) percentile calc |
 
 ---
 
@@ -35,16 +35,16 @@
 
 | Challenge   | Concept             | Key Java Features                                     |
 |-------------|---------------------|-------------------------------------------------------|
-| challenge01 | Circuit Breaker     | State machine, ReentrantLock, volatile counters       |
-| challenge02 | Load Balancer       | Distribution algorithms, server selection             |
-| challenge03 | Dependency Resolver | Topological sort, graph algorithms                    |
-| challenge04 | Rate Limiter        | Token bucket, throughput control, concurrency         |
-| challenge05 | Metrics Aggregator  | Sliding windows, percentiles, streaming data          |
-| challenge06 | Retry               | Exponential backoff, jitter, result tracking          |
-| challenge07 | LRU Cache           | Doubly-linked list + hash map, TTL, Clock abstraction |
-| challenge08 | Resource Pool       | Blocking acquire, factory pattern, AutoCloseable      |
-| challenge09 | Config Merger       | Tree structures, hierarchical configuration           |
-| challenge10 | Task Scheduler      | DelayQueue, thread pool, Future, graceful shutdown    |
+| circuitbreaker   | Circuit Breaker     | State machine, ReentrantLock, volatile counters       |
+| loadbalancer     | Load Balancer       | Distribution algorithms, server selection             |
+| dependencyresolver | Dependency Resolver | Topological sort, graph algorithms                    |
+| ratelimiter      | Rate Limiter        | Token bucket, throughput control, concurrency         |
+| metricsaggregator | Metrics Aggregator  | Sliding windows, percentiles, streaming data          |
+| retry            | Retry               | Exponential backoff, jitter, result tracking          |
+| lrucache         | LRU Cache           | Doubly-linked list + hash map, TTL, Clock abstraction |
+| resourcepool     | Resource Pool       | Blocking acquire, factory pattern, AutoCloseable      |
+| configmerger     | Config Merger       | Tree structures, hierarchical configuration           |
+| taskscheduler    | Task Scheduler      | DelayQueue, thread pool, Future, graceful shutdown    |
 
 ---
 
@@ -880,7 +880,7 @@ semaphore.acquire();   // Decrement, block if 0
 semaphore.release();   // Increment
 
 // Rate limiter using Semaphore
-// For custom rate limiter implementations, see [Interval Guide](../INTERVAL_GUIDE.md) and challenge04
+// For custom rate limiter implementations, see [Interval Guide](../INTERVAL_GUIDE.md) and ratelimiter
 public class SemaphoreRateLimiter {
     private final Semaphore semaphore;
 
@@ -1069,7 +1069,7 @@ Event polled = eventQueue.poll(); // null if empty
 
 ## C. Resilience Patterns
 
-### Circuit Breaker (challenge01)
+### Circuit Breaker (resilience/circuitbreaker)
 
 ```java
 public class CircuitBreaker {
@@ -1149,7 +1149,7 @@ public class CircuitBreaker {
 
 **Third-party options:** Resilience4j (recommended), Hystrix (deprecated).
 
-### Rate Limiter (challenge04)
+### Rate Limiter (resilience/ratelimiter)
 
 ```java
 public class TokenBucketRateLimiter {
@@ -1228,7 +1228,7 @@ public class TokenBucketRateLimiter {
 
 **Third-party options:** Bucket4j, Resilience4j RateLimiter.
 
-### Retry with Backoff (challenge06)
+### Retry with Backoff (resilience/retry)
 
 ```java
 public class RetryExecutor {
@@ -1279,7 +1279,7 @@ public class RetryExecutor {
 
 **Third-party options:** Resilience4j Retry, Spring Retry.
 
-### Load Balancing (challenge02)
+### Load Balancing (datastructures/loadbalancer)
 
 ```java
 public interface LoadBalancer {
@@ -1564,7 +1564,7 @@ public void testExpiration() {
 
 ## E. Metrics & Observability
 
-### Sliding Window Algorithms (challenge05)
+### Sliding Window Algorithms (observability/metricsaggregator)
 
 > **For interval merge and sliding window patterns, see [Interval Guide](../INTERVAL_GUIDE.md)**
 
@@ -1942,21 +1942,21 @@ public void handleException(Throwable t) {
 
 ## Challenge Implementation Notes
 
-###challenge01: CircuitBreaker
+### circuitbreaker: CircuitBreaker
 
 - Use `ReentrantLock` for state transitions.
 - Use `volatile` for counters accessed without lock.
 - State machine: CLOSED → OPEN → HALF_OPEN → CLOSED.
 - For configuration state management, see [Map Guide](../MAP_GUIDE.md)
 
-### challenge04: RateLimiter
+### ratelimiter: RateLimiter
 
 - Token bucket: track `tokens` and `lastRefillTime`.
 - Calculate tokens to add: `elapsed * refillRate`.
 - Support `tryAcquire(int tokens, long timeout, TimeUnit)`.
 - For sliding window patterns, see [Interval Guide](../INTERVAL_GUIDE.md)
 
-### challenge05: MetricsAggregator
+### metricsaggregator: MetricsAggregator
 
 - Sliding window: `Queue<LogEntry>` with eviction.
 - P95: Sort response times, pick index at 95%.
@@ -1964,7 +1964,7 @@ public void handleException(Throwable t) {
 - For sliding window algorithms, see [Interval Guide](../INTERVAL_GUIDE.md)
 - For heap percentile calculation, see [Heap Guide](../HEAP_GUIDE.md)
 
-### challenge07: LruCache
+### lrucache: LruCache
 
 - Doubly-linked list + HashMap (NOT LinkedHashMap).
 - Node: `K key, V value, Node prev, Node next`.
