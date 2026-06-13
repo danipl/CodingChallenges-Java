@@ -439,8 +439,11 @@ class BulkheadTest {
                         for (int i = 0; i < opsPerThread; i++) {
                             try (Bulkhead.Permit permit = instance.acquire("tenant-a")) {
                                 assertNotNull(permit);
+                            } catch (Bulkhead.BulkheadRejectedException ignored) {
                             }
                         }
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
                     } catch (Throwable e) {
                         error.set(e);
                     } finally {

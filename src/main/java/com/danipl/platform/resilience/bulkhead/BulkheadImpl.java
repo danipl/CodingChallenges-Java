@@ -2,6 +2,8 @@ package com.danipl.platform.resilience.bulkhead;
 
 import java.time.Clock;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -12,13 +14,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-/**
- * Implementation of {@link Bulkhead}.
- *
- * Thread-safety: Partition registry uses ReentrantReadWriteLock for read-heavy access.
- * Each partition has its own Semaphore for concurrency limiting and Atomic counters for metrics.
- * No global lock — partitions operate independently.
- */
 public final class BulkheadImpl<T> implements Bulkhead<T> {
 
     private final Config config;
@@ -75,7 +70,7 @@ public final class BulkheadImpl<T> implements Bulkhead<T> {
     }
 
     @Override
-    public Map<String, PartitionMetrics> metrics() {
+    public Map<String, Bulkhead.PartitionMetrics> metrics() {
         throw new UnsupportedOperationException("Implement this method");
     }
 
@@ -85,10 +80,6 @@ public final class BulkheadImpl<T> implements Bulkhead<T> {
     }
 
     private Partition<T> getOrCreatePartition(final String partitionKey) {
-        throw new UnsupportedOperationException("Implement this method");
-    }
-
-    private Partition<T> getPartitionOrThrow(final String partitionKey) {
         throw new UnsupportedOperationException("Implement this method");
     }
 
@@ -106,9 +97,21 @@ public final class BulkheadImpl<T> implements Bulkhead<T> {
             this.maxConcurrency = maxConcurrency;
             this.semaphore = new Semaphore(maxConcurrency);
         }
+
+        void updateMaxConcurrency(int newLimit) {
+            throw new UnsupportedOperationException("Implement this method");
+        }
+
+        void markRemoved() {
+            throw new UnsupportedOperationException("Implement this method");
+        }
+
+        boolean isRemoved() {
+            throw new UnsupportedOperationException("Implement this method");
+        }
     }
 
-    private class BulkheadPermit implements Permit {
+    private class BulkheadPermit implements Bulkhead.Permit {
         private final String partitionKey;
         private final Partition<T> partition;
         private final AtomicBoolean released = new AtomicBoolean(false);
