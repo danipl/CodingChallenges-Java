@@ -2,6 +2,7 @@ bin/
 build/
 .idea/
 .gradle/
+.omo/
 .classpath
 .project
 org.eclipse.*
