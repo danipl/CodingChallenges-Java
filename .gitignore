@@ -5,4 +5,5 @@ build/
 .omo/
 .classpath
 .project
+.vscode
 org.eclipse.*

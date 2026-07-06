@@ -1,5 +1,6 @@
 package com.danipl.practise.refactoring.promo;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -8,40 +9,61 @@ import java.util.List;
  */
 public interface PromoEngine {
 
-    /**
-     * Factory method to construct the default implementation.
-     */
-    static PromoEngine of() {
-        return new PromoEngineImpl();
-    }
+        /**
+         * Factory method to construct the default implementation.
+         */
+        static PromoEngine of() {
+                return new PromoEngineImpl();
+        }
 
-    /**
-     * Applies the given promo code to a shopping cart.
-     *
-     * @param cart      the shopping cart containing items
-     * @param promoCode the coupon/promo code string to apply
-     * @return the result of applying the promo code
-     * @throws IllegalArgumentException if the cart is null or if the promoCode is null/empty
-     */
-    DiscountResult applyPromo(Cart cart, String promoCode);
+        /**
+         * Applies the given promo code to a shopping cart.
+         *
+         * @param cart      the shopping cart containing items
+         * @param promoCode the coupon/promo code string to apply
+         * @return the result of applying the promo code
+         * @throws IllegalArgumentException if the cart is null or if the promoCode is
+         *                                  null/empty
+         */
+        DiscountResult applyPromo(Cart cart, String promoCode);
 
-    // === Domain Records ===
+        // === Domain Records ===
 
-    record CartItem(
-            String productId,
-            String category,
-            double price,
-            int quantity
-    ) {}
+        record CartItem(
+                        String productId,
+                        String category,
+                        BigDecimal price,
+                        int quantity) {
 
-    record Cart(
-            List<CartItem> items
-    ) {}
+                public CartItem(String productId,
+                                String category,
+                                double price,
+                                int quantity) {
+                        this(productId, category, new BigDecimal(price), quantity);
+                }
 
-    record DiscountResult(
-            double discountAmount,
-            String appliedCode,
-            boolean isValid,
-            String message
-    ) {}
+        }
+
+        record Cart(
+                        List<CartItem> items) {
+                public Cart {
+                        if (items == null) {
+                                items = List.of();
+                        }
+                }
+        }
+
+        record DiscountResult(
+                        BigDecimal discountAmount,
+                        String appliedCode,
+                        boolean isValid,
+                        String message) {
+
+                public DiscountResult(double discountAmount,
+                                String appliedCode,
+                                boolean isValid,
+                                String message) {
+                        this(new BigDecimal(discountAmount), appliedCode, isValid, message);
+                }
+        }
 }
