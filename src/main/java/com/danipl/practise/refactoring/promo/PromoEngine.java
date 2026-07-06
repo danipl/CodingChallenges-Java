@@ -1,6 +1,5 @@
 package com.danipl.practise.refactoring.promo;
 
-import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -19,22 +18,14 @@ public interface PromoEngine {
     /**
      * Applies the given promo code to a shopping cart.
      *
-     * @param cart           the shopping cart containing items and customer details
-     * @param promoCode      the coupon/promo code string to apply
-     * @param evaluationDate the date against which to check temporal rules (e.g. expiration, birthdays)
+     * @param cart      the shopping cart containing items
+     * @param promoCode the coupon/promo code string to apply
      * @return the result of applying the promo code
      * @throws IllegalArgumentException if the cart is null or if the promoCode is null/empty
      */
-    DiscountResult applyPromo(Cart cart, String promoCode, LocalDate evaluationDate);
+    DiscountResult applyPromo(Cart cart, String promoCode);
 
     // === Domain Records ===
-
-    record Customer(
-            String id,
-            LocalDate registrationDate,
-            boolean isLoyalMember,
-            LocalDate birthDate
-    ) {}
 
     record CartItem(
             String productId,
@@ -44,9 +35,7 @@ public interface PromoEngine {
     ) {}
 
     record Cart(
-            Customer customer,
-            List<CartItem> items,
-            double shippingCost
+            List<CartItem> items
     ) {}
 
     record DiscountResult(

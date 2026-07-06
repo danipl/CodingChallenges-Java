@@ -361,7 +361,8 @@ Evaluate across 7 dimensions (each 1-5):
 
 ## Core Principles
 
-- **Single sitting scope** — Designed to be completed in 15-30 minutes.
-- **Simple, focused scope** — No database layers, no mock servers, no multi-class architectures. Focus on a single interface contract.
+- **Micro-Sitting Scope** — Strictly designed to be completed in 15-20 minutes. Keep challenges very small and highly focused.
+- **Low-Overhead & Tiny Scope** — Avoid complex domain records, large mock setups, or multiple classes. Focus on a single simple interface contract with a maximum of **2-3 business rules or logical paths**.
+- **No boilerplate** — Keep test suites focused and concise (typically 8-12 tests total), avoiding excessive assertions.
 - **No repeats** — Always verify what challenges exist under `src/main/java/com/danipl/practise/` before generating.
 - **Test-driven design** — Clear test specifications are key to a high-quality coding experience.

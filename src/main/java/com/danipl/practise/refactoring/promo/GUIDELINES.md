@@ -2,7 +2,7 @@
 
 ## 1. Challenge Presentation
 ### What You're Building
-You are refactoring a promotional and coupon discount system (`PromoEngine`). Currently, the system contains all its business rules inside a single monolithic class (`PromoEngineImpl`) with nested conditional statements, duplication of loops, fragile date logic, and poor error handling. 
+You are refactoring a promotional and coupon discount system (`PromoEngine`). Currently, the system contains all its business rules inside a single monolithic class (`PromoEngineImpl`) with nested conditional statements, duplication of loops, and poor separation of concerns.
 
 Your goal is to refactor the code to improve **maintainability**, **readability**, and **extensibility** while keeping its external behavior identical (verified by keeping the test suite green).
 
@@ -11,75 +11,65 @@ Your goal is to refactor the code to improve **maintainability**, **readability*
 [PromoEngine]
       │
       ▼
-applyPromo(Cart, String promoCode, LocalDate evaluationDate)
+applyPromo(Cart, String promoCode)
       │
-      ├─► WELCOME10       (10% off new customer, min $50 cart, max $20 discount)
-      ├─► BOGO_ELECTRONICS (Loyal member buy 1 get 1 free on Electronics)
-      ├─► BIRTHDAY_TREAT   (15% off cart on customer birthday, min 3 items)
-      ├─► BULK_SAVINGS     ($20 off if >=$150 and >=5 items, $50 off if >=$300 and >=10 items)
-      ├─► VIP_SUMMER       (20% off Clothing + free shipping if loyal customer)
-      └─► GIFT_<value>     (Gift card with fixed value, capped at cart items total)
+      ├─► FLAT_10     ($10 flat discount if cart total >= $50)
+      ├─► PERCENT_20   (20% off cart total, capped at max $30 discount)
+      └─► BOGO_FOOD    (Buy 1 Get 1 Free on FOOD category items)
 ```
 
 ### Interface Summary
 | Method | Purpose |
 |--------|---------|
-| `applyPromo` | Computes the discount value and constructs a `DiscountResult` representing the operation outcome. |
+| `applyPromo` | Computes the discount value and constructs a `DiscountResult`. |
 
 ---
 
 ## 2. Edge & Corner Cases
 ### How to Identify Them
-Look at how data varies and inputs are structured: null inputs, negative or zero values, date differences (leap years, timezone-free comparisons), rounding details, and customer loyalty flags.
+Look at how data varies and inputs are structured: null inputs, empty lists, division by two for BOGO, and rounding.
 
 | # | Edge Case | How It Surfaces | How to Handle |
 |---|-----------|-----------------|---------------|
-| 1 | Expiry / New user duration | Days between registration and evaluation is exactly 30 | Inclusive boundary (0 to 30 days is valid). |
-| 2 | Double rounding | 10% or 15% discount yields a long fraction (e.g., $14.357) | Round to exactly 2 decimal places using deterministic rounding (like `BigDecimal` or correct scaling). |
-| 3 | Empty Cart / Missing items | Items list is null or empty | Safely treat as $0 total / 0 quantity without throwing NPE. |
-| 4 | Gift Card Code | GIFT_0, GIFT_ABC, GIFT_9999 | Check that format matches `GIFT_\d+`, value is positive, and length fits constraints. Return invalid code on mismatch. |
-| 5 | Stacked benefits | VIP loyal members get 20% clothing discount + shipping waived | Waiving shipping is represented as adding the `shippingCost` to the discount amount. |
+| 1 | Empty Cart | Items list is null or empty | Safely treat as $0 total / 0 discount without throwing NPE. |
+| 2 | Double rounding | PERCENT_20 discount yields a fraction (e.g., $14.357) | Round to exactly 2 decimal places: `Math.round(val * 100.0) / 100.0`. |
+| 3 | BOGO with odd quantities | Food item with quantity = 3 | Only 1 item is free (quantity / 2 = 1). |
 
 ---
 
 ## 3. First Approach - Chain of Thinking
-- **Minute 0-5**: Study the existing `PromoEngineImpl` and understand the preconditions (null/empty validations) and categories.
-- **Minute 5-10**: Identify code smells. Specifically:
-  - Repetitive iterations to calculate cart items totals.
+- **Minute 0-3**: Study the existing `PromoEngineImpl` and understand the 3 discount types.
+- **Minute 3-5**: Identify code smells. Specifically:
+  - Repetitive loops to calculate cart items totals.
   - Large conditional statements (`if-else` blocks based on code values).
-  - Procedural parsing of gift card values.
-- **Minute 10-15**: Define a Strategy / Rule interface (e.g., `PromoStrategy` or `DiscountRule`) to isolate the rules.
-- **Minute 15-25**: Refactor the code block-by-block, delegating to strategies. Clean up the cart calculation logic using Java Streams.
-- **Minute 25-30**: Run tests frequently during the refactoring process to verify that no functional regressions are introduced.
+- **Minute 5-10**: Define a Strategy / Rule interface (e.g., `DiscountRule`) to isolate the rules.
+- **Minute 10-15**: Refactor the code block-by-block, delegating to strategies. Clean up the cart calculation logic using Java Streams.
+- **Minute 15-20**: Run tests to verify that no functional regressions are introduced.
 
 ---
 
 ## 4. Communication Approach
-In an interview, you should explain:
-- **Design Patterns Selection**: Why you chose a specific pattern (like Strategy or Chain of Responsibility) to decouple the code.
-- **Immutability & Safety**: Why we validate inputs early (fail-fast) and why we treat cart inputs as read-only.
-- **Modern Java Idioms**: Using Java Streams and lambda functions to replace traditional `for` loops, improving readability.
+In an interview, explain:
+- **Design Patterns Selection**: Why you chose Strategy or Polymorphism to decouple rules.
+- **Modern Java Idioms**: Using Java Streams and lambda functions to replace traditional `for` loops.
 
 ---
 
 ## 5. Implementation Structure
-An elegant structure separates each promo strategy into its own class or a registry:
+An elegant structure separates each promo strategy into its own class/method or a registry:
 
 ```java
 public final class PromoEngineImpl implements PromoEngine {
     
     // Suggestion: A map or list of strategies/rules.
-    private final List<PromoRule> rules = List.of(
-        new WelcomeRule(),
-        new BogoElectronicsRule(),
+    private final Map<String, DiscountRule> rules = Map.of(
+        "FLAT_10", new FlatDiscountRule(),
         ...
     );
 
     @Override
-    public DiscountResult applyPromo(Cart cart, String promoCode, LocalDate evaluationDate) {
-        // 1. Validate inputs (fail fast)
-        // 2. Select rule matching promoCode
-        // 3. Apply rule logic and return DiscountResult
+    public DiscountResult applyPromo(Cart cart, String promoCode) {
+        // Validate inputs, match rule, calculate discount
     }
 }
 ```
@@ -87,38 +77,34 @@ public final class PromoEngineImpl implements PromoEngine {
 ---
 
 ## 6. Technical Pro Tips
-- Use Java standard math utilities safely. For precise financial calculations, `BigDecimal` is preferred, but for this exercise, double calculations with rounding to 2 decimal places are expected: `Math.round(val * 100.0) / 100.0`.
-- Leverage Java Streams for calculations:
+- Use Java Streams for calculations:
   ```java
   double total = cart.items().stream()
       .mapToDouble(item -> item.price() * item.quantity())
       .sum();
   ```
-- Use `LocalDate` APIs: `ChronoUnit.DAYS.between(d1, d2)` and `.getMonth()`, `.getDayOfMonth()` for birthday matching.
+- Use `Math.round(discount * 100.0) / 100.0` for 2 decimal places.
 
 ---
 
 ## 7. Common Mistakes to Avoid
-- **Changing validation constraints**: Changing the exception types or messages thrown when validation fails. Ensure you continue to throw `IllegalArgumentException` with the exact messages.
-- **Modifying input arguments**: Mutating the items lists or customer properties inside the engine.
-- **NPE on missing Customer/Items**: Forgetting that items lists, customers, or items can be null in some contexts.
+- **NPE on missing Items**: Forgetting that items list or elements can be null.
+- **Input Validation**: Keep the exact same validation logic (e.g., throwing `IllegalArgumentException` with the correct error messages).
 
 ---
 
 ## 8. Verification Checklist
 - [ ] Running all tests passes.
+- [ ] No duplicate code loops are present in the final implementation.
 - [ ] The massive conditional logic is replaced with modular, single-responsibility classes/methods.
-- [ ] No code duplicate loops are present in the final implementation.
-- [ ] No hardcoded values for date matching exist.
 
 ---
 
 ## 9. Extension Points
-- How would you handle combinable promo codes (e.g. applying a Gift Card *and* a Birthday discount)?
-- How would you persist coupon rules in a database and load them dynamically without modifying code?
+- How would you support dynamically loading rules from a database?
 
 ---
 
 ## 10. Production References
-- **Strategy Pattern** from Design Patterns (GoF) for encapsulating discount algorithms.
-- **Refactoring: Improving the Design of Existing Code** (Martin Fowler) — Specifically "Replace Conditional with Polymorphism".
+- **Strategy Pattern** (GoF) for encapsulating rules.
+- **Refactoring** (Martin Fowler) — "Replace Conditional with Polymorphism".
